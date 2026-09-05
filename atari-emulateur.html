@@ -41,7 +41,7 @@ body.fs #home{inset:0}
 #crtOverlay{position:absolute;inset:0;z-index:5;pointer-events:none;display:none;
   background:repeating-linear-gradient(to bottom, rgba(0,0,0,.28) 0 1px, transparent 1px 3px);mix-blend-mode:multiply;opacity:.6}
 /* on masque la manette virtuelle native d'EmulatorJS : on utilise la nôtre */
-[class*="virtualGamepad"],[class*="VirtualGamepad"]{display:none!important}
+body:not(.native-pad) [class*="virtualGamepad"],body:not(.native-pad) [class*="VirtualGamepad"]{display:none!important}
 
 /* nos commandes tactiles */
 #pad{position:absolute;inset:0;z-index:8;pointer-events:none}
@@ -169,6 +169,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="row"><div class="lab">Effet CRT<small>lignes de balayage rétro</small></div><div class="switch" id="vCrt"><b></b></div></div>
     <div class="row"><div class="lab">Luminosité</div><input type="range" id="vBright" min="60" max="150" value="100"></div>
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
+    <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -287,7 +288,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66}};
   function defLayout(){ const L={dpad:{...DEF_POS.dpad}}; SYS.buttons.forEach(b=>{ L[b.id]={...(DEF_POS[b.id]||{x:50,y:60,size:80})}; }); return L; }
 
-  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
+  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false,fill:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
     touch:{show:true,opacity:85,type:"dpad",vibro:true},gamepad:{autohide:true},layout:defLayout()});
   // complète la disposition si des boutons manquent
   if(!settings.layout) settings.layout=defLayout();
@@ -296,11 +297,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   if(!Array.isArray(settings.sound.eq)||settings.sound.eq.length!==10) settings.sound.eq=[0,0,0,0,0,0,0,0,0,0];
   if(settings.sound.boost==null) settings.sound.boost=100;
   if(settings.video.color==null) settings.video.color=false;
+  if(settings.video.fill==null) settings.video.fill=false;
   if(settings.touch.vibro==null) settings.touch.vibro=true;
   if(settings.sound.eqon==null) settings.sound.eqon=false;
   if(!settings._audiofix){ settings.sound.eqon=false; settings._audiofix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   if(!settings.psx) settings.psx={frameskip:2,interp:"simple"};
-  if(!settings._perffix){ settings.psx={frameskip:2,interp:"simple"}; settings._perffix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
+  if(!settings._perffix){ settings.psx={frameskip:2,interp:"simple"}; settings._perffix=true; }
+  if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
 
@@ -339,8 +342,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   /* ==== Réglages appliqués au rendu ==== */
   function applyVideo(){
     const v=settings.video; let f="";
-    if(v.bright!=100||v.sat!=100) f="filter:brightness("+(v.bright/100)+") saturate("+(v.sat/100)+");"; // sinon : pas de filtre => pas de coût par image (évite des craquements audio)
-    $("#vidStyle").textContent="#game canvas{image-rendering:"+(v.smooth?"auto":"pixelated")+";"+f+"}";
+    if(v.bright!=100||v.sat!=100) f="filter:brightness("+(v.bright/100)+") saturate("+(v.sat/100)+");";
+    const fill = v.fill ? "width:100%!important;height:100%!important;object-fit:fill!important;max-width:none!important;max-height:none!important;" : "";
+    $("#vidStyle").textContent="#game canvas{image-rendering:"+(v.smooth?"auto":"pixelated")+";"+f+fill+"}";
     $("#crtOverlay").style.display=v.crt?"block":"none";
   }
   function applySound(){ setEqGain(); if(!eqBuilt){ try{ const em=window.EJS_emulator; if(em&&typeof em.setVolume==="function") em.setVolume(settings.sound.vol/100); }catch(e){} } }
@@ -357,11 +361,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
   /* ==== Manette tactile (nos boutons) ==== */
   function applyPad(){
+    if(SYS.emupad) return;
     padEl.style.opacity=settings.touch.opacity/100;
     const hide=(!settings.touch.show)||(settings.gamepad.autohide&&gamepadPresent());
     padEl.classList.toggle("on", editMode || (!hide && running));
   }
   function buildPad(){
+    if(SYS.emupad) return;
     padEl.innerHTML="";
     padEl.appendChild(settings.touch.type==="dpad"?makeDpad():makeStick());
     SYS.buttons.forEach(b=>padEl.appendChild(makeButton(b)));
@@ -546,7 +552,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
-    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; $("#vFull").onclick=toggleFull; if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
+    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
   function syncSound(){ sw($("#sEqOn"),settings.sound.eqon,v=>{settings.sound.eqon=v;save();applyEqState();});
     $("#sVol").value=settings.sound.vol; $("#sVol").oninput=e=>{settings.sound.vol=+e.target.value;save();setEqGain();applySound();};
     $("#sBoost").value=settings.sound.boost; $("#sBoost").oninput=e=>{settings.sound.boost=+e.target.value;save();setEqGain();};
@@ -559,7 +565,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function syncGamepad(){ updateGpStatus(); sw($("#gAuto"),settings.gamepad.autohide,v=>{settings.gamepad.autohide=v;save();applyPad();}); }
   function applyPsx(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(gm&&gm.setVariable){ gm.setVariable("pcsx_rearmed_frameskip",String(settings.psx.frameskip)); gm.setVariable("pcsx_rearmed_spu_interpolation",settings.psx.interp); } }catch(e){} }
   function syncPerf(){
-    $("#pkThreads").innerHTML = "Anti-grésillement : le multi-fil a été <b>désactivé</b> (il chargeait un cœur trop lourd). Pour un son net, <b>monte la Fluidité</b> ci-dessous jusqu'à ce que ça ne grésille plus.";
+    $("#pkThreads").innerHTML = "Anti-grésillement : monte la <b>Fluidité</b> si besoin. La PS1 est très lourde pour un navigateur : les jeux 2D passent bien ; les gros jeux 3D peuvent garder un léger grésillement (limite du navigateur, pas un réglage).";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
   function syncSystem(){ $("#sysResume").onclick=()=>{closeSheet();hideHome();}; $("#sysHome").onclick=()=>{closeSheet();showHome();}; $("#sysFull").onclick=toggleFull; $("#sysReset").onclick=resetGame; $("#sysFF").onclick=toggleFF; $("#sysShot").onclick=screenshot; sw($("#sysWake"),wakeOn,v=>setWake(v));
     const box=$("#sysSlots"); box.innerHTML="";
@@ -635,6 +641,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     if(now-_lastTop<330){ if(isFS()) peekBar(); else showHome(); _lastTop=0; } else _lastTop=now; },true);
 
   /* init */
+  if(SYS.emupad){ document.body.classList.add("native-pad"); const te=document.querySelector('[data-act="touch"]'); if(te) te.style.display="none"; }
   if(!SYS.bios){ const mb=$("#mbBios"); if(mb) mb.style.display="none"; }
   if(SYS.core!=="psx"){ const mp=$("#mbPerf"); if(mp) mp.style.display="none"; }
   applyVideo(); updateGpStatus(); openDB();
