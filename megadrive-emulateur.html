@@ -7,7 +7,7 @@
 <title>Mega Drive · Émulateur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
 <style>
 :root{--neon:#39ff14;--neon-soft:#63ff5a;--neon-dim:#1f7a17;--bg:#050805;--panel:rgba(9,20,9,.96);
   --line:rgba(57,255,20,.28);--line-strong:rgba(57,255,20,.6);--amber:#ffcf3f;--danger:#ff4d4d;--txt:#d7ffd0;
@@ -484,7 +484,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     window.EJS_onGameStart=()=>{ running=true; currentName=name; buildPad(); setTimeout(()=>{ applyVideo(); applySound(); applyPad(); },400); };
     window.EJS_gameUrl=url;
     hideHome(); $("#gamewrap").style.display="block";
-    const s=document.createElement("script"); s.src=window.EJS_pathtodata+"loader.js"; document.body.appendChild(s);
+    const s=document.createElement("script"); s.src=window.EJS_pathtodata+"loader.js"; s.crossOrigin="anonymous"; document.body.appendChild(s);
     applyVideo();
   }
   async function onFile(files){
@@ -560,8 +560,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function applyPsx(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(gm&&gm.setVariable){ gm.setVariable("pcsx_rearmed_frameskip",String(settings.psx.frameskip)); gm.setVariable("pcsx_rearmed_spu_interpolation",settings.psx.interp); } }catch(e){} }
   function syncPerf(){
     $("#pkThreads").innerHTML = self.crossOriginIsolated
-      ? "Son fluide (multi-fil) : <b class=\"neon\">ACTIF</b>"
-      : "Son fluide (multi-fil) : <b style=\"color:var(--amber)\">inactif</b> — héberge les fichiers avec le fichier <b>_headers</b> fourni pour supprimer les grésillements.";
+      ? "Multi-fil (son fluide) : <b class=\"neon\">ACTIF ✓</b>"
+      : "Multi-fil : <b style=\"color:var(--amber)\">INACTIF</b> — ouvre l'adresse <b>Vercel</b> (pas GitHub), avec vercel.json à la racine, puis redéploie. Sans ça le son grésillera.";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
   function syncSystem(){ $("#sysResume").onclick=()=>{closeSheet();hideHome();}; $("#sysHome").onclick=()=>{closeSheet();showHome();}; $("#sysFull").onclick=toggleFull; $("#sysReset").onclick=resetGame; $("#sysFF").onclick=toggleFF; $("#sysShot").onclick=screenshot; sw($("#sysWake"),wakeOn,v=>setWake(v));
     const box=$("#sysSlots"); box.innerHTML="";
