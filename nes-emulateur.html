@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050805">
+<title>NES · Émulateur</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --neon:#39ff14;
+  --neon-soft:#63ff5a;
+  --neon-dim:#1f7a17;
+  --bg:#050805;
+  --bg2:#0a120a;
+  --panel:rgba(9,20,9,.94);
+  --line:rgba(57,255,20,.28);
+  --line-strong:rgba(57,255,20,.6);
+  --danger:#ff4d4d;
+  --amber:#ffcf3f;
+  --txt:#d7ffd0;
+  --glow:0 0 6px rgba(57,255,20,.55), 0 0 18px rgba(57,255,20,.25);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+  font-family:"Rajdhani",system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;touch-action:none}
+h1,h2,h3,.ttl{font-family:"Orbitron",sans-serif;letter-spacing:.03em}
+.neon{color:var(--neon);text-shadow:var(--glow)}
+button{font-family:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--neon);outline-offset:2px}
+
+/* ---------- écran ---------- */
+#app{position:fixed;inset:0;display:flex;flex-direction:column;
+  background:radial-gradient(120% 90% at 50% -10%, #0d1a0d 0%, var(--bg) 60%)}
+#topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;
+  border-bottom:1px solid var(--line);background:rgba(5,8,5,.7);backdrop-filter:blur(6px);z-index:30}
+#topbar .brand{font-family:"Orbitron";font-weight:900;font-size:18px}
+#topbar .brand b{color:var(--neon);text-shadow:var(--glow)}
+#topbar .sp{flex:1}
+.chip{font-size:13px;padding:5px 10px;border:1px solid var(--line);border-radius:8px;
+  background:rgba(57,255,20,.06);color:var(--neon-soft);white-space:nowrap}
+.iconbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(57,255,20,.06);display:grid;place-items:center;font-size:18px;color:var(--neon-soft)}
+.iconbtn:active{background:rgba(57,255,20,.18)}
+/* plein écran : barre du haut masquée, réapparition par double-tap */
+#topbar{transition:transform .28s ease, opacity .28s ease}
+#app.fs #topbar{transform:translateY(-110%);opacity:0;pointer-events:none}
+#app.fs.barpeek #topbar{transform:none;opacity:1;pointer-events:auto}
+#app.fs #peekhint{opacity:1}
+#peekhint{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:29;
+  font-size:11px;letter-spacing:.15em;color:rgba(57,255,20,.5);pointer-events:none;opacity:0;transition:opacity .4s}
+#app.fs.barpeek #peekhint{opacity:0}
+
+/* ---------- zone de jeu ---------- */
+#stage{position:relative;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#screen{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;
+  box-shadow:0 0 0 1px var(--line-strong), 0 0 30px rgba(57,255,20,.15);display:block}
+#screen.smooth{image-rendering:auto}
+#stage.crt::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;
+  background:repeating-linear-gradient(to bottom, rgba(0,0,0,.28) 0 1px, transparent 1px 3px);
+  mix-blend-mode:multiply;opacity:.6}
+
+/* ---------- écran d'accueil ---------- */
+#home{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;
+  align-items:center;justify-content:safe center;gap:22px;padding:24px;
+  overflow-y:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;
+  background:radial-gradient(130% 100% at 50% 0%, #0e1c0e 0%, var(--bg) 70%)}
+#home .logo{font-family:"Orbitron";font-weight:900;font-size:clamp(30px,8vw,64px);line-height:1;text-align:center}
+#home .logo small{display:block;font-size:.3em;letter-spacing:.5em;color:var(--neon-dim);margin-top:10px;font-weight:500}
+.menu{width:min(520px,92vw);display:flex;flex-direction:column;gap:12px}
+.mbtn{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:14px;
+  border:1px solid var(--line);background:linear-gradient(180deg,rgba(57,255,20,.05),rgba(57,255,20,.02));
+  font-size:17px;font-weight:600;text-align:left;transition:transform .08s, box-shadow .2s, border-color .2s}
+.mbtn:active{transform:scale(.98)}
+.mbtn:hover{border-color:var(--line-strong);box-shadow:var(--glow)}
+.mbtn .k{font-family:"Orbitron";color:var(--neon);width:26px;text-align:center;text-shadow:var(--glow)}
+.mbtn .d{flex:1}
+.mbtn .d small{display:block;color:#8fb98a;font-size:13px;font-weight:500}
+.mbtn.primary{border-color:var(--line-strong);background:linear-gradient(180deg,rgba(57,255,20,.16),rgba(57,255,20,.04));box-shadow:var(--glow)}
+
+/* ---------- panneaux réglages ---------- */
+.sheet{position:fixed;inset:0;z-index:60;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
+.sheet.open{display:flex}
+.sheet .card{width:min(640px,100vw);max-height:88vh;overflow:auto;background:var(--panel);
+  border:1px solid var(--line-strong);border-bottom:none;border-radius:18px 18px 0 0;
+  box-shadow:0 -8px 40px rgba(57,255,20,.12);padding:18px 18px 28px;
+  touch-action:pan-y;-webkit-overflow-scrolling:touch}
+.results,.recent,.cheatlist,.card{touch-action:pan-y}
+.sheet .card.center{border-radius:18px;border-bottom:1px solid var(--line-strong)}
+.sheet.center-mode{align-items:center}
+.sheet h2{margin:0 0 14px;font-size:20px;display:flex;align-items:center;gap:10px}
+.sheet h2 .close{margin-left:auto;font-size:22px;background:none;border:none;color:var(--neon-soft);line-height:1}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(57,255,20,.12)}
+.row:last-child{border-bottom:none}
+.row .lab{flex:1}
+.row .lab small{display:block;color:#8fb98a;font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{padding:8px 12px;background:transparent;border:none;color:var(--txt);font-weight:600;font-size:14px}
+.seg button.on{background:var(--neon);color:#031a01;text-shadow:none}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:6px;
+  background:linear-gradient(90deg,var(--neon-dim),var(--neon));outline:none;width:150px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--neon);box-shadow:var(--glow);border:2px solid #041b01}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--neon);border:2px solid #041b01}
+input[type=text],input[type=number],select{background:#04140a;border:1px solid var(--line);color:var(--txt);
+  border-radius:10px;padding:10px 12px;font-family:inherit;font-size:15px;width:100%}
+.switch{width:52px;height:30px;border-radius:20px;border:1px solid var(--line);background:#04140a;position:relative;transition:.2s}
+.switch b{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#5b7a57;transition:.2s}
+.switch.on{background:rgba(57,255,20,.25);border-color:var(--line-strong)}
+.switch.on b{left:26px;background:var(--neon);box-shadow:var(--glow)}
+.btn{padding:11px 16px;border-radius:11px;border:1px solid var(--line-strong);background:rgba(57,255,20,.08);
+  color:var(--neon-soft);font-weight:700;font-size:15px}
+.btn:active{background:rgba(57,255,20,.2)}
+.btn.solid{background:var(--neon);color:#041b01;text-shadow:none}
+.btn.ghost{border-color:var(--line);background:transparent}
+.btn.danger{border-color:rgba(255,77,77,.6);color:var(--danger);background:rgba(255,77,77,.08)}
+.hint{color:#8fb98a;font-size:13px;line-height:1.4}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tag{font-size:12px;color:var(--neon-dim)}
+
+/* liste jeux récents */
+.recent{display:flex;flex-direction:column;gap:8px}
+.recent .item{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(57,255,20,.04)}
+.recent .item .nm{flex:1;min-width:0}
+.recent .item .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent .item .nm small{color:#8fb98a}
+.recent .empty{color:#8fb98a;text-align:center;padding:24px 0}
+
+/* cheats */
+.results{max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:8px}
+.results .r{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid rgba(57,255,20,.1);font-variant-numeric:tabular-nums}
+.results .r:last-child{border:none}
+.results .r code{color:var(--neon-soft)}
+.cheatlist{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.cheatlist .c{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(57,255,20,.04)}
+.cheatlist .c .x{margin-left:auto;color:var(--danger);border:none;background:none;font-size:18px}
+.mono{font-family:"Orbitron",monospace;letter-spacing:.05em}
+
+/* ---------- manette à l'écran ---------- */
+#pad{position:absolute;inset:0;z-index:10;pointer-events:none}
+#pad.on{pointer-events:auto}
+.ctl{position:absolute;pointer-events:auto;touch-action:none;user-select:none;
+  display:grid;place-items:center;transform:translate(-50%,-50%)}
+.ctl .face{width:100%;height:100%;display:grid;place-items:center;position:relative}
+/* boutons ronds A/B/etc */
+.btnface{border-radius:50%;border:2px solid var(--line-strong);
+  background:radial-gradient(circle at 35% 30%, rgba(57,255,20,.28), rgba(6,20,6,.9));
+  font-family:"Orbitron";font-weight:900;color:var(--neon);text-shadow:var(--glow);
+  box-shadow:0 0 12px rgba(57,255,20,.25), inset 0 0 12px rgba(0,0,0,.6)}
+.ctl.pressed .btnface{background:radial-gradient(circle at 35% 30%, rgba(57,255,20,.7), rgba(57,255,20,.2));
+  box-shadow:0 0 22px rgba(57,255,20,.7), inset 0 0 12px rgba(0,0,0,.5)}
+.pill{border-radius:22px}
+/* dpad croix */
+.dpad{position:relative}
+.dpad .arm{position:absolute;background:linear-gradient(180deg,rgba(57,255,20,.16),rgba(6,20,6,.9));
+  border:1.5px solid var(--line-strong);box-shadow:inset 0 0 10px rgba(0,0,0,.6)}
+.dpad .v{left:34%;width:32%;top:2%;height:96%;border-radius:8px}
+.dpad .h{top:34%;height:32%;left:2%;width:96%;border-radius:8px}
+.dpad .arrow{position:absolute;color:var(--neon);font-size:14px;text-shadow:var(--glow);z-index:2}
+.dpad .a-up{top:5%;left:50%;transform:translateX(-50%)}
+.dpad .a-dn{bottom:5%;left:50%;transform:translateX(-50%)}
+.dpad .a-lf{left:5%;top:50%;transform:translateY(-50%)}
+.dpad .a-rt{right:5%;top:50%;transform:translateY(-50%)}
+.dpad .hit{position:absolute;z-index:3}
+.dpad .zU{left:30%;width:40%;top:0;height:38%}
+.dpad .zD{left:30%;width:40%;bottom:0;height:38%}
+.dpad .zL{top:30%;height:40%;left:0;width:38%}
+.dpad .zR{top:30%;height:40%;right:0;width:38%}
+.dpad .zUL{left:0;top:0;width:34%;height:34%}
+.dpad .zUR{right:0;top:0;width:34%;height:34%}
+.dpad .zDL{left:0;bottom:0;width:34%;height:34%}
+.dpad .zDR{right:0;bottom:0;width:34%;height:34%}
+.dpad.pU .v .padTop,.dpad .center{}
+/* joystick */
+.stick{border-radius:50%;border:2px solid var(--line-strong);position:relative;
+  background:radial-gradient(circle at 50% 50%, rgba(57,255,20,.05), rgba(6,20,6,.92));
+  box-shadow:inset 0 0 24px rgba(0,0,0,.7), 0 0 14px rgba(57,255,20,.2)}
+.stick .ring{position:absolute;inset:12%;border-radius:50%;border:1px dashed rgba(57,255,20,.25)}
+.stick .knob{position:absolute;top:50%;left:50%;width:44%;height:44%;border-radius:50%;
+  transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%, var(--neon-soft), var(--neon-dim));
+  box-shadow:0 0 18px rgba(57,255,20,.7), inset 0 0 10px rgba(0,0,0,.5);transition:transform .05s linear}
+.stick .cross{position:absolute;inset:0;pointer-events:none}
+.stick .cross i{position:absolute;color:rgba(57,255,20,.5);font-size:12px}
+.stick .cU{top:5%;left:50%;transform:translateX(-50%)}
+.stick .cD{bottom:5%;left:50%;transform:translateX(-50%)}
+.stick .cL{left:6%;top:50%;transform:translateY(-50%)}
+.stick .cR{right:6%;top:50%;transform:translateY(-50%)}
+
+/* mode édition disposition */
+#pad.edit .ctl{outline:2px dashed rgba(57,255,20,.5);outline-offset:2px;border-radius:8px}
+#pad.edit .ctl.sel{outline:2px solid var(--neon);box-shadow:0 0 20px rgba(57,255,20,.5)}
+#editbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;
+  display:none;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;
+  background:var(--panel);border:1px solid var(--line-strong);box-shadow:var(--glow);max-width:94vw;flex-wrap:wrap;justify-content:center}
+#editbar.on{display:flex}
+#editbar .selname{color:var(--neon);font-weight:700;min-width:74px}
+.toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:80;
+  background:var(--panel);border:1px solid var(--line-strong);color:var(--neon-soft);
+  padding:10px 16px;border-radius:12px;box-shadow:var(--glow);opacity:0;transition:.25s;pointer-events:none;font-weight:600}
+.toast.show{opacity:1}
+.hidden{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div class="brand"><b>NES</b> · Émulateur</div>
+    <div class="sp"></div>
+    <div class="chip" id="fps">-- fps</div>
+    <button class="iconbtn" id="btnFull" title="Plein écran">⛶</button>
+    <button class="iconbtn" id="btnMenu" title="Menu">☰</button>
+  </div>
+
+  <div id="stage">
+    <div id="peekhint">double-tap ici pour le menu</div>
+    <canvas id="screen" width="256" height="240"></canvas>
+
+    <!-- manette tactile -->
+    <div id="pad"></div>
+    <div id="editbar">
+      <span class="selname" id="selName">—</span>
+      <span class="hint">Taille</span>
+      <input type="range" id="selSize" min="24" max="240" step="2" style="width:120px">
+      <button class="btn ghost" id="editReset">Réinitialiser</button>
+      <button class="btn solid" id="editDone">Terminer</button>
+    </div>
+
+    <!-- ACCUEIL -->
+    <div id="home">
+      <div class="logo">LE ROYAUME<br>DES 8 BITS<small>émulateur nes</small></div>
+      <div class="menu">
+        <button class="mbtn primary hidden" id="btnResume" data-act="resume"><span class="k">▶</span><span class="d">Reprendre le jeu<small>continuer la partie en cours</small></span></button>
+        <button class="mbtn primary" data-act="pick"><span class="k">1</span><span class="d">Choisir un jeu<small>fichier .nes sur ta tablette</small></span></button>
+        <button class="mbtn" data-act="recent"><span class="k">2</span><span class="d">Jeux récents<small>relancer une partie</small></span></button>
+        <button class="mbtn" data-act="online"><span class="k">⇄</span><span class="d">Jouer en ligne · 2 joueurs<small>appairage Wi‑Fi par code, en duel</small></span></button>
+        <button class="mbtn" data-act="system"><span class="k">◉</span><span class="d">État &amp; système<small>pause, reset, sauvegardes, vitesse, capture</small></span></button>
+        <button class="mbtn" data-act="video"><span class="k">▷</span><span class="d">Vidéo<small>échelle, lissage, CRT, plein écran</small></span></button>
+        <button class="mbtn" data-act="sound"><span class="k">♪</span><span class="d">Son<small>égaliseur, booster, volume</small></span></button>
+        <button class="mbtn" data-act="gamepad"><span class="k">⊞</span><span class="d">Manette physique<small>détection, mappage auto ou manuel</small></span></button>
+        <button class="mbtn" data-act="pad"><span class="k">✛</span><span class="d">Boutons &amp; manette<small>position, taille, croix ou joystick</small></span></button>
+        <button class="mbtn" data-act="cheat"><span class="k">◈</span><span class="d">Cheats &amp; chercheur mémoire<small>scan de valeurs, gel d'adresses</small></span></button>
+        <button class="mbtn" data-act="codes"><span class="k">#</span><span class="d">Codes Game Genie / Game Shark<small>saisie de codes classiques</small></span></button>
+      </div>
+      <div class="hint">Le cœur d'émulation (jsnes) se charge depuis Internet à l'ouverture.</div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept=".nes" class="hidden">
+<input type="file" id="netfile" accept=".nes" class="hidden">
+
+<!-- ===== PANNEAU VIDÉO ===== -->
+<div class="sheet" id="sh-video">
+  <div class="card">
+    <h2><span class="neon">Vidéo</span><button class="close" data-close>✕</button></h2>
+    <div class="row"><div class="lab">Échelle de l'image<small>taille du rendu à l'écran</small></div>
+      <div class="seg" id="vScale">
+        <button data-v="fit" class="on">Ajusté</button><button data-v="2">×2</button><button data-v="3">×3</button><button data-v="stretch">Étiré</button>
+      </div></div>
+    <div class="row"><div class="lab">Format d'image<small>proportions de l'écran</small></div>
+      <div class="seg" id="vAspect"><button data-v="4:3" class="on">4:3</button><button data-v="1:1">8:7</button><button data-v="full">Plein</button></div></div>
+    <div class="row"><div class="lab">Lissage<small>pixels nets (off) ou flous (on)</small></div><div class="switch" id="vSmooth"><b></b></div></div>
+    <div class="row"><div class="lab">Effet CRT<small>lignes de balayage rétro</small></div><div class="switch" id="vCrt"><b></b></div></div>
+    <div class="row"><div class="lab">Luminosité</div><input type="range" id="vBright" min="60" max="150" value="100"></div>
+    <div class="row"><div class="lab">Saturation des couleurs</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
+    <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
+  </div>
+</div>
+
+<!-- ===== PANNEAU SON ===== -->
+<div class="sheet" id="sh-sound">
+  <div class="card">
+    <h2><span class="neon">Son</span><button class="close" data-close>✕</button></h2>
+    <div class="row"><div class="lab">Son activé</div><div class="switch on" id="sOn"><b></b></div></div>
+    <div class="row"><div class="lab">Volume</div><input type="range" id="sVol" min="0" max="100" value="70"></div>
+    <div class="row"><div class="lab">Booster de volume<small>amplifie au-delà de 100 % — un limiteur évite la saturation</small></div><input type="range" id="sBoost" min="100" max="300" value="100"></div>
+    <h3 class="neon" style="margin:16px 0 4px">Égaliseur</h3>
+    <div class="row" style="border:none;padding:6px 0;flex-wrap:wrap">
+      <div class="seg" id="eqPreset"><button data-v="flat">Plat</button><button data-v="bass">Basses</button><button data-v="treble">Aigus</button><button data-v="voice">Voix</button><button data-v="loud">Loudness</button></div>
+      <button class="btn ghost" id="eqReset" style="margin-left:auto">Réinitialiser</button>
+    </div>
+    <div id="eqBands"></div>
+    <p class="hint">Chaque curseur règle une bande de fréquence entre −12 et +12 dB (graves à gauche, aigus à droite). Le limiteur en sortie garde un son propre même avec le booster à fond. Sur mobile, le son démarre au premier appui (règle des navigateurs).</p>
+  </div>
+</div>
+
+<!-- ===== PANNEAU MANETTE ===== -->
+<div class="sheet" id="sh-pad">
+  <div class="card">
+    <h2><span class="neon">Boutons &amp; manette</span><button class="close" data-close>✕</button></h2>
+    <div class="row"><div class="lab">Type de directionnel<small>croix classique ou joystick 360°</small></div>
+      <div class="seg" id="pType"><button data-v="dpad" class="on">Croix D-pad</button><button data-v="stick">Joystick</button></div></div>
+    <div class="row"><div class="lab">Manette visible pendant le jeu</div><div class="switch on" id="pShow"><b></b></div></div>
+    <div class="row"><div class="lab">Vibration au toucher<small>si la tablette le permet</small></div><div class="switch on" id="pVibro"><b></b></div></div>
+    <div class="row"><div class="lab">Opacité de la manette</div><input type="range" id="pOpacity" min="25" max="100" value="85"></div>
+    <div class="row"><div class="lab">Éditer la disposition<small>déplacer et redimensionner chaque bouton</small></div>
+      <button class="btn solid" id="pEdit">Ouvrir l'éditeur</button></div>
+    <div class="hint">Dans l'éditeur : glisse un bouton pour le déplacer, touche-le pour le sélectionner puis règle sa taille. Chaque bouton est réglable indépendamment.</div>
+  </div>
+</div>
+
+<!-- ===== PANNEAU CHEATS / RECHERCHE MÉMOIRE ===== -->
+<div class="sheet" id="sh-cheat">
+  <div class="card">
+    <h2><span class="neon">Chercheur de valeurs</span><button class="close" data-close>✕</button></h2>
+    <p class="hint" id="cheatWarn">Lance d'abord un jeu pour scanner sa mémoire.</p>
+    <div class="grid2">
+      <div><div class="tag">Valeur recherchée</div><input type="text" inputmode="numeric" id="cVal" placeholder="ex : 3 (vies)" autocomplete="off"></div>
+      <div><div class="tag">Comparateur</div>
+        <select id="cCmp">
+          <option value="eq">= égal à la valeur</option>
+          <option value="eqp">= inchangé</option>
+          <option value="ne">≠ a changé</option>
+          <option value="gt">&gt; a augmenté</option>
+          <option value="lt">&lt; a diminué</option>
+          <option value="gtv">&gt; supérieur à la valeur</option>
+          <option value="ltv">&lt; inférieur à la valeur</option>
+        </select></div>
+    </div>
+    <div class="row" style="border:none;padding-top:12px">
+      <button class="btn solid" id="cNew">Nouvelle recherche</button>
+      <button class="btn" id="cNext">Filtrer</button>
+      <button class="btn ghost" id="cClear">Effacer</button>
+      <span class="chip" id="cCount">0 résultat</span>
+    </div>
+    <div class="results" id="cResults"></div>
+    <h3 style="margin:18px 0 6px" class="neon">Adresses gelées (cheats actifs)</h3>
+    <div class="cheatlist" id="cFrozen"></div>
+  </div>
+</div>
+
+<!-- ===== PANNEAU CODES ===== -->
+<div class="sheet" id="sh-codes">
+  <div class="card">
+    <h2><span class="neon">Game Genie / Game Shark</span><button class="close" data-close>✕</button></h2>
+    <div class="row" style="border:none">
+      <div class="lab">Code<small>Game Genie (6 ou 8 lettres) ou brut ADRESSE:VALEUR</small></div>
+    </div>
+    <input type="text" id="codeIn" placeholder="ex : SXIOPO  ou  007D:03" autocomplete="off" spellcheck="false" style="text-transform:uppercase">
+    <div class="row" style="border:none;padding-top:12px">
+      <button class="btn solid" id="codeAdd">Ajouter le code</button>
+      <span class="chip" id="codeMsg"></span>
+    </div>
+    <div class="cheatlist" id="codeList"></div>
+    <p class="hint">Le Game Genie est le standard NES : les lettres valides sont A P Z L G I T Y E O X U K S V N. Un code à 8 lettres inclut une valeur de comparaison. Le format brut ADRESSE:VALEUR (hex) écrit directement une valeur en mémoire à chaque image, comme une cartouche de triche.</p>
+  </div>
+</div>
+
+<!-- ===== PANNEAU MANETTE PHYSIQUE ===== -->
+<div class="sheet" id="sh-gamepad">
+  <div class="card">
+    <h2><span class="neon">Manette physique</span><button class="close" data-close>✕</button></h2>
+    <div class="chip" id="gpStatus" style="display:block;margin-bottom:12px">Recherche d'une manette…</div>
+    <div class="row"><div class="lab">Manette activée</div><div class="switch on" id="gpOn"><b></b></div></div>
+    <div class="row"><div class="lab">Mappage automatique<small>configure une manette standard en un clic</small></div><button class="btn solid" id="gpAuto">Auto</button></div>
+    <h3 class="neon" style="margin:14px 0 4px">Mappage manuel</h3>
+    <div id="gpRows"></div>
+    <div class="row" style="border:none;padding-top:6px"><button class="btn ghost" id="gpReset">Réinitialiser</button></div>
+    <p class="hint">Connecte ta manette en USB ou Bluetooth, puis <b>appuie sur un bouton</b> pour qu'elle apparaisse (les navigateurs ne la révèlent qu'après une première pression). Pour le mappage manuel : touche « Configurer » sur une action, puis presse le bouton voulu sur la manette. La manette fonctionne aussi en jeu à deux en ligne.</p>
+  </div>
+</div>
+
+<!-- ===== PANNEAU JEU EN LIGNE ===== -->
+<div class="sheet" id="sh-online">
+  <div class="card">
+    <h2><span class="neon">Jouer en ligne · 2 joueurs</span><button class="close" data-close>✕</button></h2>
+    <p class="hint">Sur le même Wi‑Fi, la connexion est <b>directe entre les deux tablettes</b> (latence minimale). Internet ne sert qu'à l'appairage par code. L'hôte est le joueur 1, l'invité le joueur 2 — chacun joue avec les boutons de son propre écran.</p>
+    <div class="row"><div class="lab">Jeu à partager<small>l'hôte choisit ; le jeu est envoyé automatiquement à l'autre</small></div><button class="btn" id="netPick">Choisir .nes</button></div>
+    <div class="chip" id="netGame" style="display:block;margin:2px 0 8px">Aucun jeu sélectionné</div>
+    <div class="row"><div class="lab">Latence d'entrée<small>images d'avance : bas = plus réactif, haut = plus tolérant</small></div>
+      <div class="seg" id="netDelay"><button data-v="1">1</button><button data-v="2" class="on">2</button><button data-v="3">3</button><button data-v="4">4</button></div></div>
+    <div class="grid2" style="margin-top:6px">
+      <button class="btn solid" id="netHost">Créer une partie</button>
+      <button class="btn" id="netJoinBtn">Rejoindre</button>
+    </div>
+    <div id="netJoinBox" style="display:none;margin-top:12px">
+      <div class="tag">Code de la partie</div>
+      <input type="text" id="netCode" placeholder="ex : 4821" inputmode="numeric" autocomplete="off">
+      <button class="btn solid" id="netConnect" style="margin-top:8px;width:100%">Se connecter</button>
+    </div>
+    <div id="netStatus" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- ===== PANNEAU ÉTAT & SYSTÈME ===== -->
+<div class="sheet" id="sh-system">
+  <div class="card">
+    <h2><span class="neon">État &amp; système</span><button class="close" data-close>✕</button></h2>
+    <div class="row"><div class="lab">Retour au jeu</div><button class="btn solid" id="sysResume">Reprendre</button></div>
+    <div class="row"><div class="lab">Menu principal<small>met le jeu en pause</small></div><button class="btn ghost" id="sysHome">Ouvrir le menu</button></div>
+    <div class="row"><div class="lab">Réinitialiser le jeu<small>redémarre la partie en cours</small></div><button class="btn" id="sysReset">Reset</button></div>
+    <div class="row"><div class="lab">Vitesse d'émulation</div>
+      <div class="seg" id="sysSpeed"><button data-v="0.5">0.5×</button><button data-v="1" class="on">1×</button><button data-v="2">2×</button><button data-v="3">3×</button></div></div>
+    <div class="row"><div class="lab">Avance rapide<small>accélère tant que c'est activé</small></div><div class="switch" id="sysFF"><b></b></div></div>
+    <div class="row"><div class="lab">Garder l'écran allumé<small>empêche la tablette de se verrouiller</small></div><div class="switch" id="sysWake"><b></b></div></div>
+    <div class="row"><div class="lab">Plein écran</div><button class="btn" id="sysFull">Activer</button></div>
+    <div class="row"><div class="lab">Capture d'écran<small>enregistre une image PNG</small></div><button class="btn" id="sysShot">Capturer</button></div>
+    <h3 style="margin:16px 0 6px" class="neon">Sauvegardes d'état</h3>
+    <div id="sysSlots" style="display:flex;flex-direction:column;gap:8px"></div>
+    <p class="hint">Une sauvegarde d'état enregistre la partie exacte (position, score, vies…). Elle est conservée par jeu, indépendamment des sauvegardes internes de la cartouche.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsnes@1.2.1/dist/jsnes.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+(function(){
+/* ============================================================
+   0. Utilitaires
+   ============================================================ */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const hex=(n,l=4)=>n.toString(16).toUpperCase().padStart(l,"0");
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove("show"),1800);}
+function vibrate(ms){ if(settings.pad.vibro && navigator.vibrate) try{navigator.vibrate(ms);}catch(e){} }
+
+/* ============================================================
+   1. Réglages persistés (localStorage)
+   ============================================================ */
+const DEFAULT_LAYOUT = {
+  dpad:  {x:18, y:74, size:150},
+  A:     {x:87, y:74, size:92},
+  B:     {x:73, y:82, size:92},
+  START: {x:60, y:94, size:70},
+  SELECT:{x:40, y:94, size:70},
+  TA:    {x:92, y:58, size:64},
+  TB:    {x:78, y:64, size:64}
+};
+const settings = load("nes_settings", {
+  video:{scale:"fit", aspect:"4:3", smooth:false, crt:false, bright:100, sat:100},
+  sound:{on:true, vol:70, boost:100, eq:[0,0,0,0,0,0,0,0,0,0]},
+  system:{speed:1, wake:false},
+  pad:{type:"dpad", show:true, vibro:true, opacity:85, layout:JSON.parse(JSON.stringify(DEFAULT_LAYOUT))}
+});
+// complète les clés manquantes (mises à jour futures)
+for(const id in DEFAULT_LAYOUT){ if(!settings.pad.layout[id]) settings.pad.layout[id]={...DEFAULT_LAYOUT[id]}; }
+if(settings.video.sat==null) settings.video.sat=100;
+if(!settings.system) settings.system={speed:1, wake:false};
+if(settings.sound.boost==null) settings.sound.boost=100;
+if(!Array.isArray(settings.sound.eq)||settings.sound.eq.length!==10) settings.sound.eq=[0,0,0,0,0,0,0,0,0,0];
+if(!settings.pad.gamepad) settings.pad.gamepad={enabled:true, map:{
+  UP:{k:"btn",i:12},DOWN:{k:"btn",i:13},LEFT:{k:"btn",i:14},RIGHT:{k:"btn",i:15},
+  A:{k:"btn",i:1},B:{k:"btn",i:0},START:{k:"btn",i:9},SELECT:{k:"btn",i:8},
+  TA:{k:"btn",i:2},TB:{k:"btn",i:3}}};
+function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
+function save(){try{localStorage.setItem("nes_settings",JSON.stringify(settings));}catch(e){}}
+
+/* ============================================================
+   2. Stockage des ROMs et sauvegardes (IndexedDB)
+   ============================================================ */
+let db=null;
+function openDB(){return new Promise((res)=>{
+  const rq=indexedDB.open("nes_db",1);
+  rq.onupgradeneeded=e=>{const d=e.target.result;
+    if(!d.objectStoreNames.contains("roms")) d.createObjectStore("roms",{keyPath:"name"});
+    if(!d.objectStoreNames.contains("states")) d.createObjectStore("states",{keyPath:"name"});};
+  rq.onsuccess=e=>{db=e.target.result;res(db);};
+  rq.onerror=()=>res(null);
+});}
+function idbPut(store,val){return new Promise((res)=>{if(!db)return res();
+  const tx=db.transaction(store,"readwrite");tx.objectStore(store).put(val);tx.oncomplete=()=>res();tx.onerror=()=>res();});}
+function idbGet(store,key){return new Promise((res)=>{if(!db)return res(null);
+  const tx=db.transaction(store,"readonly");const rq=tx.objectStore(store).get(key);rq.onsuccess=()=>res(rq.result||null);rq.onerror=()=>res(null);});}
+function idbAll(store){return new Promise((res)=>{if(!db)return res([]);
+  const tx=db.transaction(store,"readonly");const rq=tx.objectStore(store).getAll();rq.onsuccess=()=>res(rq.result||[]);rq.onerror=()=>res([]);});}
+function idbDel(store,key){return new Promise((res)=>{if(!db)return res();
+  const tx=db.transaction(store,"readwrite");tx.objectStore(store).delete(key);tx.oncomplete=()=>res();tx.onerror=()=>res();});}
+
+/* ============================================================
+   3. Cœur d'émulation (jsnes)
+   ============================================================ */
+const SCREEN_W=256, SCREEN_H=240;
+const canvas=$("#screen"), ctx=canvas.getContext("2d");
+const image=ctx.createImageData(SCREEN_W,SCREEN_H);
+const buf=new ArrayBuffer(image.data.length);
+const buf8=new Uint8ClampedArray(buf);
+const buf32=new Uint32Array(buf);
+for(let i=0;i<buf32.length;i++) buf32[i]=0xff000000;
+
+let nes=null, running=false, currentName=null, rafId=0;
+let speed=1, fastForward=false, accFrame=0, wakeLock=null;
+let lastRom=null;
+let gpPrev={}, gpListen=null, gpIv=0, gpBase=null, gpTimeout=0;
+const netplay={active:false,role:null,peer:null,conn:null,started:false,
+  simFrame:0,localSched:0,delay:2,localBuf:new Map(),remoteBuf:new Map(),rom:null,ping:0,pingIv:0};
+// audio
+let actx=null, gain=null, sproc=null, audioSampleRate=44100, eqBands=[], limiter=null;
+const A_RING=1<<15, A_MASK=A_RING-1;
+const audioL=new Float32Array(A_RING), audioR=new Float32Array(A_RING);
+let aWrite=0, aRead=0, aLastL=0, aLastR=0;
+
+function ensureNES(){
+  if(nes) return nes;
+  if(typeof jsnes==="undefined"){ toast("Cœur jsnes non chargé (Internet ?)"); return null; }
+  nes=new jsnes.NES({
+    onFrame:function(fb){
+      for(let i=0;i<fb.length;i++) buf32[i]=0xff000000|fb[i];
+      image.data.set(buf8); ctx.putImageData(image,0,0);
+    },
+    onAudioSample:function(l,r){
+      const next=(aWrite+1)&A_MASK;
+      if(next!==aRead){ audioL[aWrite]=l; audioR[aWrite]=r; aWrite=next; } // sinon plein : on ignore
+    },
+    sampleRate:audioSampleRate
+  });
+  return nes;
+}
+
+function initAudio(){
+  if(actx) return;
+  try{
+    const AC=(window.AudioContext||window.webkitAudioContext);
+    try{ actx=new AC({sampleRate:44100, latencyHint:"interactive"}); }catch(e){ actx=new AC(); }
+    audioSampleRate=actx.sampleRate;
+
+    // source (échantillons de l'émulateur)
+    sproc=actx.createScriptProcessor(2048,0,2);
+    sproc.onaudioprocess=function(e){
+      const l=e.outputBuffer.getChannelData(0), r=e.outputBuffer.getChannelData(1);
+      if(!running){                        // aucun jeu en cours → silence total (pas de craquement à vide)
+        for(let i=0;i<l.length;i++){ l[i]=0; r[i]=0; }
+        aLastL=aLastR=0; return;
+      }
+      for(let i=0;i<l.length;i++){
+        if(aRead!==aWrite){ aLastL=audioL[aRead]; aLastR=audioR[aRead]; aRead=(aRead+1)&A_MASK; }
+        l[i]=aLastL; r[i]=aLastR; // maintien du dernier échantillon si manque → pas de craquement
+      }
+    };
+
+    // égaliseur 10 bandes
+    const freqs=[31,62,125,250,500,1000,2000,4000,8000,16000];
+    eqBands=freqs.map((f,i)=>{
+      const bq=actx.createBiquadFilter();
+      bq.type = i===0?"lowshelf" : i===freqs.length-1?"highshelf" : "peaking";
+      bq.frequency.value=f; bq.Q.value=1.1; bq.gain.value=settings.sound.eq[i]||0;
+      return bq;
+    });
+
+    // volume + booster
+    gain=actx.createGain();
+    // limiteur anti-saturation (surtout utile avec le booster)
+    limiter=actx.createDynamicsCompressor();
+    limiter.threshold.value=-6; limiter.knee.value=6; limiter.ratio.value=12;
+    limiter.attack.value=0.003; limiter.release.value=0.25;
+
+    // câblage : sproc → band0 → … → band9 → gain → limiter → sortie
+    let node=sproc;
+    eqBands.forEach(b=>{ node.connect(b); node=b; });
+    node.connect(gain); gain.connect(limiter); limiter.connect(actx.destination);
+    setMasterGain();
+    if(!running) suspendAudio();      // rien ne joue encore → moteur audio en veille
+  }catch(e){}
+}
+function setMasterGain(){
+  if(gain) gain.gain.value = settings.sound.on ? (settings.sound.vol/100)*(settings.sound.boost/100) : 0;
+}
+function applyEqNodes(){ eqBands.forEach((b,i)=>{ if(b) b.gain.value=settings.sound.eq[i]||0; }); }
+function resumeAudio(){ if(actx && actx.state==="suspended") actx.resume(); }
+function suspendAudio(){ if(actx && actx.state==="running"){ aRead=aWrite=0; aLastL=aLastR=0; actx.suspend(); } }
+
+/* --- boucle 60 fps --- */
+let lastT=0, frames=0, fpsT=0;
+function loop(t){
+  rafId=requestAnimationFrame(loop);
+  if(!running||!nes){ lastT=t; return; }
+  let dt=(t-lastT)/1000; lastT=t;
+  if(dt>0.25||dt<0) dt=1/60;
+  pollGamepad();
+  const sp = (netplay.active?1:(fastForward?Math.max(speed,4):speed));
+  accFrame += dt*60*sp;
+  let n=0;
+  while(accFrame>=1 && n<12){
+    if(netplay.active && netplay.started){
+      if(!netStep()){ if(accFrame>1) accFrame=1; break; } // en attente de l'autre joueur
+    }else{
+      nes.frame(); applyCheats();
+    }
+    accFrame--; n++; frames++;
+  }
+  if(accFrame>4) accFrame=0;
+  if(t-fpsT>=1000){
+    $("#fps").textContent=Math.round(frames)+" fps"+(netplay.active?(" · "+(netplay.ping||0)+" ms"):"");
+    frames=0; fpsT=t;
+  }
+}
+
+/* --- chargement d'une ROM (chaîne binaire) --- */
+function ab2bin(ab){
+  const b=new Uint8Array(ab); let s="";
+  const CH=0x8000;
+  for(let i=0;i<b.length;i+=CH) s+=String.fromCharCode.apply(null,b.subarray(i,i+CH));
+  return s;
+}
+async function startROM(name, arraybuffer){
+  initAudio();                      // fixe la fréquence AVANT de créer l'émulateur (reprise gérée par hideHome)
+  ensureNES(); if(!nes) return;
+  try{
+    aRead=aWrite=0; aLastL=aLastR=0;   // purge le tampon audio
+    nes.loadROM(ab2bin(arraybuffer));
+    lastRom={name, ab:arraybuffer};
+    currentName=name;
+    running=true;
+    hideHome();
+    buildPad();
+    applyVideo();
+    resetCheatSearch();
+    $("#cheatWarn").textContent="Mémoire de « "+name+" » prête à être scannée.";
+    // enregistre comme récent
+    await idbPut("roms",{name, data:arraybuffer, ts:Date.now()});
+    if(!rafId){ fpsT=performance.now(); rafId=requestAnimationFrame(loop); }
+    toast("▶ "+name);
+  }catch(e){ toast("ROM illisible : "+e.message); }
+}
+
+/* ============================================================
+   4. Entrées : clavier + manette tactile
+   ============================================================ */
+const B = jsnes.Controller ? jsnes.Controller : {BUTTON_A:0,BUTTON_B:1,BUTTON_SELECT:2,BUTTON_START:3,BUTTON_UP:4,BUTTON_DOWN:5,BUTTON_LEFT:6,BUTTON_RIGHT:7};
+let localBtn=0; // masque des boutons tenus localement (bit = 1<<bouton)
+function press(btn){ localBtn|=(1<<btn); if(!netplay.active && nes) nes.buttonDown(1,btn); }
+function release(btn){ localBtn&=~(1<<btn); if(!netplay.active && nes) nes.buttonUp(1,btn); }
+function applyBits(pl,bits){ for(let b=0;b<8;b++){ if(bits&(1<<b)) nes.buttonDown(pl,b); else nes.buttonUp(pl,b); } }
+
+const KEYS={ArrowUp:B.BUTTON_UP,ArrowDown:B.BUTTON_DOWN,ArrowLeft:B.BUTTON_LEFT,ArrowRight:B.BUTTON_RIGHT,
+  KeyX:B.BUTTON_A,KeyZ:B.BUTTON_B,KeyS:B.BUTTON_A,KeyA:B.BUTTON_B,Enter:B.BUTTON_START,ShiftRight:B.BUTTON_SELECT,Backspace:B.BUTTON_SELECT,ShiftLeft:B.BUTTON_SELECT};
+addEventListener("keydown",e=>{ if(KEYS[e.code]!==undefined){e.preventDefault();press(KEYS[e.code]);} });
+addEventListener("keyup",e=>{ if(KEYS[e.code]!==undefined){e.preventDefault();release(KEYS[e.code]);} });
+
+/* Turbo : maintien = pressions rapides */
+const turbo={TA:{btn:B.BUTTON_A,on:false},TB:{btn:B.BUTTON_B,on:false}};
+setInterval(()=>{
+  for(const k in turbo){const o=turbo[k]; if(o.on){ o.phase=!o.phase; o.phase?press(o.btn):release(o.btn);} }
+},50);
+
+/* ============================================================
+   5. Manette tactile — construction dynamique
+   ============================================================ */
+const padEl=$("#pad");
+const CTRL_DEFS = {
+  A:{label:"A",btn:B.BUTTON_A,shape:"btnface"},
+  B:{label:"B",btn:B.BUTTON_B,shape:"btnface"},
+  START:{label:"START",btn:B.BUTTON_START,shape:"pill"},
+  SELECT:{label:"SELECT",btn:B.BUTTON_SELECT,shape:"pill"},
+  TA:{label:"A⟳",turbo:"TA",shape:"btnface"},
+  TB:{label:"B⟳",turbo:"TB",shape:"btnface"}
+};
+let editMode=false, selId=null;
+
+function buildPad(){
+  padEl.innerHTML="";
+  padEl.classList.toggle("on", editMode || (settings.pad.show && !(settings.pad.gamepad.enabled && gamepadPresent())));
+  padEl.style.opacity = settings.pad.opacity/100;
+  // directionnel
+  if(settings.pad.type==="dpad") padEl.appendChild(makeDpad());
+  else padEl.appendChild(makeStick());
+  // boutons
+  for(const id in CTRL_DEFS) padEl.appendChild(makeButton(id));
+  positionAll();
+}
+function positionAll(){
+  const rect=padEl.getBoundingClientRect();
+  $$(".ctl",padEl).forEach(el=>{
+    const id=el.dataset.id, L=settings.pad.layout[id]; if(!L) return;
+    el.style.left=L.x+"%"; el.style.top=L.y+"%";
+    el.style.width=L.size+"px"; el.style.height=L.size+"px";
+    if(id==="START"||id==="SELECT") el.style.height=(L.size*0.42)+"px";
+  });
+}
+function baseEl(id,size){
+  const el=document.createElement("div");
+  el.className="ctl"; el.dataset.id=id;
+  attachDrag(el);
+  return el;
+}
+function makeButton(id){
+  const def=CTRL_DEFS[id];
+  const el=baseEl(id);
+  const face=document.createElement("div");
+  face.className="face "+ (def.shape==="pill"?"btnface pill":"btnface");
+  face.style.width="100%"; face.style.height="100%";
+  face.style.fontSize="clamp(12px,4vw,20px)";
+  face.textContent=def.label;
+  el.appendChild(face);
+  bindHold(el, ()=>{
+    if(def.turbo){ turbo[def.turbo].on=true; }
+    else press(def.btn);
+    vibrate(12);
+  }, ()=>{
+    if(def.turbo){ turbo[def.turbo].on=false; release(turbo[def.turbo].btn); }
+    else release(def.btn);
+  });
+  return el;
+}
+function makeDpad(){
+  const el=baseEl("dpad");
+  const d=document.createElement("div"); d.className="face dpad";
+  d.innerHTML='<div class="arm v"></div><div class="arm h"></div>'
+    +'<span class="arrow a-up">▲</span><span class="arrow a-dn">▼</span><span class="arrow a-lf">◀</span><span class="arrow a-rt">▶</span>'
+    +'<div class="hit zUL"></div><div class="hit zU"></div><div class="hit zUR"></div>'
+    +'<div class="hit zL"></div><div class="hit zR"></div>'
+    +'<div class="hit zDL"></div><div class="hit zD"></div><div class="hit zDR"></div>';
+  el.appendChild(d);
+  const map={zU:[B.BUTTON_UP],zD:[B.BUTTON_DOWN],zL:[B.BUTTON_LEFT],zR:[B.BUTTON_RIGHT],
+    zUL:[B.BUTTON_UP,B.BUTTON_LEFT],zUR:[B.BUTTON_UP,B.BUTTON_RIGHT],
+    zDL:[B.BUTTON_DOWN,B.BUTTON_LEFT],zDR:[B.BUTTON_DOWN,B.BUTTON_RIGHT]};
+  let active=[];
+  const relAll=()=>{active.forEach(release);active=[];};
+  $$(".hit",d).forEach(z=>{
+    const zone=[...z.classList].find(c=>c[0]==="z");
+    bindHold(z, ()=>{ if(editMode)return; relAll(); active=map[zone].slice(); active.forEach(press); vibrate(8); }, relAll, true);
+  });
+  return el;
+}
+function makeStick(){
+  const el=baseEl("dpad"); // occupe le même emplacement que le d-pad
+  const s=document.createElement("div"); s.className="face stick";
+  s.innerHTML='<div class="ring"></div><div class="cross">'
+    +'<i class="cU">▲</i><i class="cD">▼</i><i class="cL">◀</i><i class="cR">▶</i></div>'
+    +'<div class="knob"></div>';
+  el.appendChild(s);
+  const knob=$(".knob",s);
+  let active=[], pid=null, cx=0, cy=0, rad=0;
+  const relAll=()=>{active.forEach(release);active=[];};
+  function toDirs(dx,dy,mag){
+    relAll();
+    if(mag<0.32) return;                       // zone morte
+    let ang=Math.atan2(dy,dx)*180/Math.PI;     // 0=droite, 90=bas
+    if(ang<0) ang+=360;
+    // 8 secteurs de 45°, décalés de 22.5° => diagonales fluides
+    const seg=Math.round(ang/45)%8;
+    const dirs=[[B.BUTTON_RIGHT],[B.BUTTON_RIGHT,B.BUTTON_DOWN],[B.BUTTON_DOWN],[B.BUTTON_DOWN,B.BUTTON_LEFT],
+                [B.BUTTON_LEFT],[B.BUTTON_LEFT,B.BUTTON_UP],[B.BUTTON_UP],[B.BUTTON_UP,B.BUTTON_RIGHT]][seg];
+    active=dirs.slice(); active.forEach(press);
+  }
+  function moveKnob(dx,dy,mag){
+    const m=Math.min(mag,1); const k=rad*0.42*m;
+    const a=Math.atan2(dy,dx);
+    knob.style.transform=`translate(calc(-50% + ${Math.cos(a)*k}px), calc(-50% + ${Math.sin(a)*k}px))`;
+  }
+  el.addEventListener("pointerdown",ev=>{
+    if(editMode) return;
+    const r=s.getBoundingClientRect(); cx=r.left+r.width/2; cy=r.top+r.height/2; rad=r.width/2;
+    pid=ev.pointerId; try{el.setPointerCapture(pid);}catch(e){}
+    onMove(ev); ev.preventDefault();
+  });
+  function onMove(ev){
+    if(pid===null) return;
+    const dx=ev.clientX-cx, dy=ev.clientY-cy; const mag=Math.hypot(dx,dy)/rad;
+    moveKnob(dx,dy,mag); toDirs(dx,dy,mag);
+  }
+  el.addEventListener("pointermove",ev=>{ if(pid===ev.pointerId) onMove(ev); });
+  const up=ev=>{ if(pid===ev.pointerId){ pid=null; relAll(); knob.style.transform="translate(-50%,-50%)"; } };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+  return el;
+}
+
+/* maintien tactile générique (multi-touch grâce à pointer capture par élément) */
+function bindHold(el,onDown,onUp,child){
+  const target=child?el:el;
+  target.addEventListener("pointerdown",ev=>{
+    if(editMode) return;
+    try{target.setPointerCapture(ev.pointerId);}catch(e){}
+    el.closest(".ctl")?.classList.add("pressed");
+    onDown(ev); ev.preventDefault(); ev.stopPropagation();
+  });
+  const end=ev=>{ el.closest(".ctl")?.classList.remove("pressed"); onUp(ev); };
+  target.addEventListener("pointerup",end);
+  target.addEventListener("pointercancel",end);
+  target.addEventListener("lostpointercapture",end);
+}
+
+/* ============================================================
+   6. Mode édition : déplacer + redimensionner chaque bouton
+   ============================================================ */
+function attachDrag(el){
+  let pid=null, sx=0, sy=0, ox=0, oy=0, moved=false;
+  el.addEventListener("pointerdown",ev=>{
+    if(!editMode) return;
+    pid=ev.pointerId; try{el.setPointerCapture(pid);}catch(e){}
+    const L=settings.pad.layout[el.dataset.id]; ox=L.x; oy=L.y; sx=ev.clientX; sy=ev.clientY; moved=false;
+    selectCtl(el.dataset.id); ev.preventDefault(); ev.stopPropagation();
+  });
+  el.addEventListener("pointermove",ev=>{
+    if(pid!==ev.pointerId||!editMode) return;
+    const r=padEl.getBoundingClientRect();
+    const dx=(ev.clientX-sx)/r.width*100, dy=(ev.clientY-sy)/r.height*100;
+    if(Math.abs(dx)+Math.abs(dy)>0.4) moved=true;
+    const L=settings.pad.layout[el.dataset.id];
+    L.x=clamp(ox+dx,3,97); L.y=clamp(oy+dy,6,97);
+    el.style.left=L.x+"%"; el.style.top=L.y+"%";
+  });
+  const up=ev=>{ if(pid===ev.pointerId){ pid=null; if(moved) save(); } };
+  el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up);
+}
+function selectCtl(id){
+  selId=id;
+  $$(".ctl",padEl).forEach(c=>c.classList.toggle("sel",c.dataset.id===id));
+  $("#selName").textContent = id==="dpad" ? (settings.pad.type==="stick"?"Joystick":"Croix") : (CTRL_DEFS[id]?.label||id);
+  $("#selSize").value = settings.pad.layout[id].size;
+}
+function enterEdit(){
+  editMode=true; selId=null;
+  closeSheet();
+  if(!padEl.children.length) buildPad();          // config possible avant tout jeu
+  if(!running) $("#home").classList.add("hidden"); // sinon l'accueil masque la manette
+  padEl.classList.add("on","edit");
+  $("#editbar").classList.add("on");
+  selectCtl("dpad");
+  toast("Glisse pour déplacer, touche pour sélectionner");
+}
+function exitEdit(){
+  editMode=false;
+  padEl.classList.remove("edit");
+  padEl.classList.toggle("on", settings.pad.show);
+  $("#editbar").classList.remove("on");
+  if(!running) $("#home").classList.remove("hidden");
+  $$(".ctl",padEl).forEach(c=>c.classList.remove("sel"));
+  save();
+}
+$("#selSize").addEventListener("input",e=>{
+  if(!selId) return; settings.pad.layout[selId].size=+e.target.value; positionAll();
+});
+$("#editDone").onclick=exitEdit;
+$("#editReset").onclick=()=>{ settings.pad.layout=JSON.parse(JSON.stringify(DEFAULT_LAYOUT)); positionAll(); save(); toast("Disposition réinitialisée"); };
+
+/* ============================================================
+   7. Vidéo — application des réglages
+   ============================================================ */
+function applyVideo(){
+  const v=settings.video, stage=$("#stage");
+  canvas.classList.toggle("smooth", v.smooth);
+  stage.classList.toggle("crt", v.crt);
+  canvas.style.filter="brightness("+(v.bright/100)+") saturate("+((v.sat==null?100:v.sat)/100)+")";
+  const sr=stage.getBoundingClientRect();
+  const ar = v.aspect==="4:3"?4/3 : v.aspect==="1:1"?256/240 : (sr.width/sr.height);
+  let w,h;
+  if(v.scale==="stretch"){ w=sr.width; h=sr.height; }
+  else if(v.scale==="2"){ w=256*2; h=240*2; }
+  else if(v.scale==="3"){ w=256*3; h=240*3; }
+  else { // fit : le plus grand possible en gardant le format
+    h=sr.height; w=h*ar;
+    if(w>sr.width){ w=sr.width; h=w/ar; }
+  }
+  if(v.scale==="2"||v.scale==="3"){ // applique le format sur l'échelle entière
+    w = 240* (v.scale==="2"?2:3) * ar; h=240*(v.scale==="2"?2:3);
+  }
+  canvas.style.width=Math.round(w)+"px";
+  canvas.style.height=Math.round(h)+"px";
+}
+addEventListener("resize",()=>{ if(running) applyVideo(); });
+
+/* ============================================================
+   8. Cheats — chercheur de valeurs + gel + codes
+   ============================================================ */
+const RAM_RANGES=[[0x0000,0x0800],[0x6000,0x8000]]; // RAM interne + SRAM
+let candidates=null;           // Map adresse -> dernière valeur
+const frozen=new Map();        // adresse -> valeur figée (chercheur mémoire)
+const codeCheats=[];           // {raw,address,value,compare} Game Genie / bruts
+
+function readMem(a){ return nes && nes.cpu ? (nes.cpu.mem[a]&0xff) : 0; }
+function eachAddr(fn){ for(const [s,e] of RAM_RANGES) for(let a=s;a<e;a++) fn(a); }
+
+function resetCheatSearch(){ candidates=null; renderResults(); renderFrozen(); }
+function newSearch(){
+  if(!nes){ toast("Lance un jeu d'abord"); return; }
+  const cmp=$("#cCmp").value, val=parseInt($("#cVal").value,10);
+  candidates=new Map();
+  eachAddr(a=>{
+    const v=readMem(a);
+    let keep=true;
+    if(cmp==="eq"||cmp==="gtv"||cmp==="ltv"){
+      if(isNaN(val)){ toast("Entre une valeur"); keep=false; }
+      else if(cmp==="eq") keep=(v===val);
+      else if(cmp==="gtv") keep=(v>val);
+      else if(cmp==="ltv") keep=(v<val);
+    }
+    if(keep) candidates.set(a,v);
+  });
+  renderResults();
+}
+function filterSearch(){
+  if(!candidates){ newSearch(); return; }
+  const cmp=$("#cCmp").value, val=parseInt($("#cVal").value,10);
+  const next=new Map();
+  candidates.forEach((prev,a)=>{
+    const v=readMem(a); let keep=false;
+    switch(cmp){
+      case "eq": keep=(!isNaN(val)&&v===val); break;
+      case "eqp": keep=(v===prev); break;
+      case "ne": keep=(v!==prev); break;
+      case "gt": keep=(v>prev); break;
+      case "lt": keep=(v<prev); break;
+      case "gtv": keep=(!isNaN(val)&&v>val); break;
+      case "ltv": keep=(!isNaN(val)&&v<val); break;
+    }
+    if(keep) next.set(a,v);
+  });
+  candidates=next; renderResults();
+}
+function renderResults(){
+  const box=$("#cResults"); const n=candidates?candidates.size:0;
+  $("#cCount").textContent = n+" résultat"+(n>1?"s":"");
+  if(!candidates){ box.innerHTML='<div class="r" style="color:#8fb98a">Aucune recherche en cours.</div>'; return; }
+  if(n===0){ box.innerHTML='<div class="r" style="color:#8fb98a">Aucune adresse ne correspond.</div>'; return; }
+  const rows=[]; let i=0;
+  candidates.forEach((v,a)=>{ if(i++>=200) return;
+    rows.push('<div class="r"><code>$'+hex(a)+'</code><span>= <b class="neon">'+v+'</b></span>'
+      +'<button class="btn ghost" style="margin-left:auto;padding:5px 10px" data-freeze="'+a+'" data-val="'+v+'">Geler</button></div>'); });
+  if(n>200) rows.push('<div class="r" style="color:#8fb98a">… affine encore ('+n+' au total)</div>');
+  box.innerHTML=rows.join("");
+  $$("[data-freeze]",box).forEach(b=>b.onclick=()=>{
+    freezeAddr(+b.dataset.freeze, +b.dataset.val); });
+}
+function freezeAddr(a,v){ frozen.set(a,v); renderFrozen(); toast("Gelé $"+hex(a)+" = "+v); }
+function renderFrozen(){
+  const box=$("#cFrozen");
+  if(frozen.size===0){ box.innerHTML='<div class="hint">Aucune adresse gelée.</div>'; return; }
+  const rows=[];
+  frozen.forEach((v,a)=>rows.push(
+    '<div class="c"><span class="mono">$'+hex(a)+'</span> = <input type="number" value="'+v+'" data-addr="'+a
+    +'" style="width:80px;padding:6px 8px"><button class="x" data-del="'+a+'">✕</button></div>'));
+  box.innerHTML=rows.join("");
+  $$("[data-del]",box).forEach(b=>b.onclick=()=>{ frozen.delete(+b.dataset.del); renderFrozen(); });
+  $$("input[data-addr]",box).forEach(inp=>inp.oninput=()=>{ frozen.set(+inp.dataset.addr, clamp(+inp.value||0,0,255)); });
+}
+function applyCheats(){
+  if(!nes || netplay.active) return; // en duel : pas de triche (sinon désynchronisation)
+  frozen.forEach((v,a)=>{ nes.cpu.mem[a]=v&0xff; });
+  for(const c of codeCheats){
+    if(c.compare==null || (nes.cpu.mem[c.address]&0xff)===c.compare) nes.cpu.mem[c.address]=c.value&0xff;
+  }
+}
+
+/* --- Game Genie (algorithme officiel NES) --- */
+const GG="APZLGITYEOXUKSVN";
+function decodeGameGenie(code){
+  code=code.toUpperCase().replace(/[^A-Z]/g,"");
+  if(code.length!==6 && code.length!==8) return null;
+  const n=[]; for(const c of code){ const i=GG.indexOf(c); if(i<0) return null; n.push(i); }
+  let address=0x8000 + (
+      ((n[3]&7)<<12) | ((n[5]&7)<<8) | ((n[4]&8)<<8)
+    | ((n[2]&7)<<4) | ((n[1]&8)<<4) | (n[4]&7) | (n[3]&8) );
+  let value, compare=null;
+  if(n.length===6){
+    value=((n[1]&7)<<4) | ((n[0]&8)<<4) | (n[0]&7) | (n[5]&8);
+  }else{
+    value=((n[1]&7)<<4) | ((n[0]&8)<<4) | (n[0]&7) | (n[7]&8);
+    compare=((n[7]&7)<<4) | ((n[6]&8)<<4) | (n[6]&7) | (n[5]&8);
+  }
+  return {address,value,compare};
+}
+/* --- brut ADRESSE:VALEUR (hex) façon Game Shark / poke RAM --- */
+function decodeRaw(code){
+  const m=code.replace(/\s/g,"").match(/^([0-9A-Fa-f]{2,4}):?([0-9A-Fa-f]{2})$/);
+  if(!m) return null;
+  return {address:parseInt(m[1],16)&0xffff, value:parseInt(m[2],16)&0xff, compare:null};
+}
+function addCode(){
+  const raw=$("#codeIn").value.trim(); if(!raw){ return; }
+  let dec=decodeGameGenie(raw), kind="Game Genie";
+  if(!dec){ dec=decodeRaw(raw); kind="Code brut"; }
+  if(!dec){ $("#codeMsg").textContent="Code invalide"; return; }
+  dec.raw=raw.toUpperCase(); dec.kind=kind;
+  codeCheats.push(dec);
+  $("#codeIn").value=""; $("#codeMsg").textContent="Ajouté ✓";
+  renderCodes();
+}
+function renderCodes(){
+  const box=$("#codeList");
+  if(codeCheats.length===0){ box.innerHTML='<div class="hint">Aucun code actif.</div>'; return; }
+  box.innerHTML=codeCheats.map((c,i)=>
+    '<div class="c"><b class="mono neon">'+c.raw+'</b> <span class="hint">'+c.kind
+    +' → $'+hex(c.address)+' = '+c.value+(c.compare!=null?' (si '+c.compare+')':'')
+    +'</span><button class="x" data-i="'+i+'">✕</button></div>').join("");
+  $$("[data-i]",box).forEach(b=>b.onclick=()=>{ codeCheats.splice(+b.dataset.i,1); renderCodes(); });
+}
+
+/* ============================================================
+   9. Câblage de l'interface (menus, panneaux, réglages)
+   ============================================================ */
+function openSheet(id){
+  closeSheet();
+  const sh=$("#sh-"+id); if(!sh) return;
+  sh.classList.add("open");
+  if(id==="cheat"||id==="codes"||id==="video"||id==="sound") sh.classList.add("center-mode"), sh.querySelector(".card").classList.remove("center");
+}
+function closeSheet(){ $$(".sheet.open").forEach(s=>s.classList.remove("open")); if(gpListen) stopCapture(); }
+$$("[data-close]").forEach(b=>b.onclick=closeSheet);
+$$(".sheet").forEach(sh=>sh.addEventListener("pointerdown",e=>{ if(e.target===sh) closeSheet(); }));
+
+// menu d'accueil
+$$("#home .mbtn").forEach(b=>b.onclick=()=>menuAction(b.dataset.act));
+$("#btnMenu").onclick=showHome;
+$("#btnFull").onclick=toggleFull;
+function menuAction(act){
+  if(act==="resume"){ hideHome(); }
+  else if(act==="pick"){ $("#file").click(); }
+  else if(act==="recent"){ openRecent(); }
+  else if(act==="online"){ syncOnlineUI(); openSheet("online"); }
+  else if(act==="system"){ syncSystemUI(); openSheet("system"); }
+  else if(act==="video"){ syncVideoUI(); openSheet("video"); }
+  else if(act==="sound"){ syncSoundUI(); openSheet("sound"); }
+  else if(act==="gamepad"){ syncGamepadUI(); openSheet("gamepad"); }
+  else if(act==="pad"){ syncPadUI(); openSheet("pad"); }
+  else if(act==="cheat"){ renderResults(); renderFrozen(); openSheet("cheat"); }
+  else if(act==="codes"){ renderCodes(); openSheet("codes"); }
+}
+
+// fichier .nes
+$("#file").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(!/\.nes$/i.test(f.name)){ toast("Choisis un fichier .nes"); return; }
+  const ab=await f.arrayBuffer();
+  await startROM(f.name, ab);
+  e.target.value="";
+});
+
+// jeux récents
+async function openRecent(){
+  const list=(await idbAll("roms")).sort((a,b)=>b.ts-a.ts);
+  let card=$("#sh-recent");
+  if(!card){
+    card=document.createElement("div"); card.className="sheet center-mode"; card.id="sh-recent";
+    card.innerHTML='<div class="card"><h2><span class="neon">Jeux récents</span><button class="close" data-close>✕</button></h2><div class="recent" id="recentBox"></div></div>';
+    document.body.appendChild(card);
+    card.querySelector("[data-close]").onclick=closeSheet;
+    card.addEventListener("pointerdown",e=>{ if(e.target===card) closeSheet(); });
+  }
+  const box=$("#recentBox",card);
+  if(list.length===0){ box.innerHTML='<div class="empty">Aucun jeu récent.<br>Charge un fichier .nes pour commencer.</div>'; }
+  else{
+    box.innerHTML=list.map(r=>{
+      const d=new Date(r.ts); const when=d.toLocaleDateString()+" "+d.toLocaleTimeString().slice(0,5);
+      return '<div class="item"><div class="nm"><b>'+r.name+'</b><small>'+when+'</small></div>'
+        +'<button class="btn solid" data-play="'+encodeURIComponent(r.name)+'">Jouer</button>'
+        +'<button class="btn danger" data-rm="'+encodeURIComponent(r.name)+'">✕</button></div>';
+    }).join("");
+    $$("[data-play]",box).forEach(b=>b.onclick=async()=>{
+      const rec=await idbGet("roms",decodeURIComponent(b.dataset.play));
+      if(rec){ closeSheet(); await startROM(rec.name, rec.data); }
+    });
+    $$("[data-rm]",box).forEach(b=>b.onclick=async()=>{
+      await idbDel("roms",decodeURIComponent(b.dataset.rm)); openRecent(); });
+  }
+  openSheetEl(card);
+}
+function openSheetEl(el){ closeSheet(); el.classList.add("open"); }
+
+/* --- Vidéo UI --- */
+function seg(container,val,cb){
+  $$("button",container).forEach(b=>{
+    b.classList.toggle("on",b.dataset.v===val);
+    b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); };
+  });
+}
+function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
+function syncVideoUI(){
+  seg($("#vScale"),settings.video.scale,v=>{settings.video.scale=v;save();applyVideo();});
+  seg($("#vAspect"),settings.video.aspect,v=>{settings.video.aspect=v;save();applyVideo();});
+  sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();});
+  sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
+  $("#vBright").value=settings.video.bright;
+  $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
+  $("#vSat").value=settings.video.sat;
+  $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();};
+  $("#vFull").onclick=toggleFull;
+}
+function toggleFull(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement && !document.webkitFullscreenElement){
+    (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el);
+  }else{
+    (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document);
+  }
+}
+function isFS(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); }
+function onFSchange(){
+  const fs=isFS(), app=$("#app");
+  app.classList.toggle("fs",fs);
+  if(!fs) app.classList.remove("barpeek");
+  const t=fs?"Quitter":"Activer";
+  if($("#vFull")) $("#vFull").textContent=t;
+  if($("#sysFull")) $("#sysFull").textContent=t;
+  setTimeout(()=>{ if(running) applyVideo(); },80);
+}
+["fullscreenchange","webkitfullscreenchange"].forEach(ev=>document.addEventListener(ev,onFSchange));
+function toggleBar(){
+  const app=$("#app"), show=!app.classList.contains("barpeek");
+  app.classList.toggle("barpeek",show);
+  clearTimeout(toggleBar._t);
+  if(show) toggleBar._t=setTimeout(()=>app.classList.remove("barpeek"),4500);
+}
+let _lastTop=0;
+document.addEventListener("pointerdown",e=>{
+  if(!isFS()||e.clientY>70) return;              // seulement en haut de l'écran, en plein écran
+  const now=performance.now();
+  if(now-_lastTop<330){ toggleBar(); _lastTop=0; } else _lastTop=now;
+},true);
+
+/* --- Son UI --- */
+function syncSoundUI(){
+  sw($("#sOn"),settings.sound.on,v=>{settings.sound.on=v;save();setMasterGain();});
+  $("#sVol").value=settings.sound.vol;
+  $("#sVol").oninput=e=>{settings.sound.vol=+e.target.value;save();setMasterGain();};
+  $("#sBoost").value=settings.sound.boost;
+  $("#sBoost").oninput=e=>{settings.sound.boost=+e.target.value;save();setMasterGain();};
+  seg($("#eqPreset"),null,applyEqPreset);
+  $("#eqReset").onclick=()=>applyEqPreset("flat");
+  buildEqUI();
+}
+
+/* --- Manette UI --- */
+function syncPadUI(){
+  seg($("#pType"),settings.pad.type,v=>{settings.pad.type=v;save();buildPad();});
+  sw($("#pShow"),settings.pad.show,v=>{settings.pad.show=v;save();updatePadForGamepad();});
+  sw($("#pVibro"),settings.pad.vibro,v=>{settings.pad.vibro=v;save();});
+  $("#pOpacity").value=settings.pad.opacity;
+  $("#pOpacity").oninput=e=>{settings.pad.opacity=+e.target.value;save();padEl.style.opacity=settings.pad.opacity/100;};
+  $("#pEdit").onclick=enterEdit;
+}
+
+/* --- Cheats UI --- */
+$("#cNew").onclick=newSearch;
+$("#cNext").onclick=filterSearch;
+$("#cClear").onclick=()=>{ const f=$("#cVal"); f.value=""; f.blur(); toast("Valeur effacée"); };
+$("#codeAdd").onclick=addCode;
+$("#codeIn").addEventListener("keydown",e=>{ if(e.key==="Enter") addCode(); });
+
+/* ============================================================
+   Égaliseur — interface
+   ============================================================ */
+const EQ_LABELS=["31","62","125","250","500","1k","2k","4k","8k","16k"];
+const EQ_PRESETS={flat:[0,0,0,0,0,0,0,0,0,0],bass:[8,7,5,2,0,0,0,0,0,0],
+  treble:[0,0,0,0,0,2,4,6,7,8],voice:[-3,-2,0,2,4,4,2,0,-1,-2],loud:[6,4,2,0,-1,-1,0,2,4,6]};
+function fmtDb(v){ return (v>0?"+":"")+v+" dB"; }
+function buildEqUI(){
+  const box=$("#eqBands"); if(!box) return; box.innerHTML="";
+  EQ_LABELS.forEach((lb,i)=>{
+    const row=document.createElement("div"); row.className="row"; row.style.padding="7px 0";
+    row.innerHTML='<div class="lab" style="flex:0 0 42px">'+lb+'<small>Hz</small></div>'
+      +'<input type="range" min="-12" max="12" step="1" value="'+(settings.sound.eq[i]||0)+'" data-band="'+i+'" style="flex:1;width:auto">'
+      +'<span class="mono" data-db="'+i+'" style="flex:0 0 52px;text-align:right;font-size:13px">'+fmtDb(settings.sound.eq[i]||0)+'</span>';
+    box.appendChild(row);
+  });
+  $$("[data-band]",box).forEach(sl=>sl.oninput=()=>{
+    const i=+sl.dataset.band, v=+sl.value; settings.sound.eq[i]=v; save();
+    if(eqBands[i]) eqBands[i].gain.value=v;
+    box.querySelector('[data-db="'+i+'"]').textContent=fmtDb(v);
+  });
+}
+function applyEqPreset(name){
+  if(!EQ_PRESETS[name]) return;
+  settings.sound.eq=EQ_PRESETS[name].slice(); save(); applyEqNodes(); buildEqUI();
+}
+
+/* ============================================================
+   Jeu en ligne — lockstep déterministe (P2P WebRTC via PeerJS)
+   ============================================================ */
+function abToB64(ab){ let s=""; const b=new Uint8Array(ab); const CH=0x8000;
+  for(let i=0;i<b.length;i+=CH) s+=String.fromCharCode.apply(null,b.subarray(i,i+CH)); return btoa(s); }
+function b64ToAb(b64){ const s=atob(b64); const b=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b.buffer; }
+function sendNet(o){ try{ if(netplay.conn && netplay.conn.open) netplay.conn.send(o); }catch(e){} }
+function netStatus(html){ const el=$("#netStatus"); if(el) el.innerHTML=html; wireQuit(); }
+function quitBtn(){ return '<button class="btn danger" id="netQuit" style="margin-top:10px">Quitter la partie</button>'; }
+function wireQuit(){ const b=$("#netQuit"); if(b) b.onclick=()=>{ sendNet({t:"bye"}); endNet("Partie quittée"); }; }
+function genCode(){ return String(Math.floor(1000+Math.random()*9000)); }
+function startPing(){ clearInterval(netplay.pingIv);
+  netplay.pingIv=setInterval(()=>sendNet({t:"ping",ts:performance.now()}),1000); }
+
+function netStart(){
+  netplay.simFrame=0; netplay.localSched=netplay.delay;
+  netplay.localBuf.clear(); // on garde remoteBuf (messages reçus en avance)
+  for(let f=0; f<=netplay.delay; f++){ netplay.localBuf.set(f,0); sendNet({t:"in",f,b:0}); }
+  netplay.started=true;
+}
+function netStep(){
+  const lf=netplay.localBuf.get(netplay.simFrame);
+  const rf=netplay.remoteBuf.get(netplay.simFrame);
+  if(lf===undefined||rf===undefined) return false;         // il manque une entrée → on attend
+  if(netplay.role==="host"){ applyBits(1,lf); applyBits(2,rf); }
+  else { applyBits(2,lf); applyBits(1,rf); }
+  nes.frame();
+  netplay.localBuf.delete(netplay.simFrame);
+  netplay.remoteBuf.delete(netplay.simFrame);
+  netplay.simFrame++;
+  netplay.localSched++;                                     // planifie une entrée « delay » images plus loin
+  netplay.localBuf.set(netplay.localSched, localBtn);
+  sendNet({t:"in", f:netplay.localSched, b:localBtn});
+  return true;
+}
+function startDuel(){
+  initAudio(); resumeAudio(); ensureNES(); if(!nes){ toast("jsnes non chargé"); return; }
+  if(!netplay.rom){ toast("ROM manquante"); return; }
+  nes.loadROM(ab2bin(netplay.rom.ab)); nes.reset();         // état de départ identique des deux côtés
+  aRead=aWrite=0; aLastL=aLastR=0;
+  currentName=netplay.rom.name;
+  buildPad(); applyVideo();
+  netplay.active=true; netplay.started=false; speed=1; fastForward=false;
+  closeSheet(); hideHome();
+  netStart();
+  running=true; lastT=performance.now();
+  toast("Duel en ligne — tu es le joueur "+(netplay.role==="host"?"1":"2"));
+}
+function onNetData(m){
+  if(!m||!m.t) return;
+  switch(m.t){
+    case "cfg": netplay.delay=(m.delay|0)||2; break;
+    case "rom": netplay.rom={name:m.name, ab:b64ToAb(m.b64)}; break;
+    case "start": startDuel(); break;
+    case "in": netplay.remoteBuf.set(m.f, m.b|0); break;
+    case "ping": sendNet({t:"pong",ts:m.ts}); break;
+    case "pong": netplay.ping=Math.round(performance.now()-m.ts); break;
+    case "bye": endNet("L'autre joueur a quitté"); break;
+  }
+}
+function setupConn(c,isHost){
+  netplay.conn=c;
+  c.on("open",()=>{
+    netStatus((isHost?"Joueur 2 connecté ✓":"Connecté à l'hôte ✓")+"<br>Préparation…"+quitBtn());
+    startPing();
+    if(isHost){
+      sendNet({t:"cfg",delay:netplay.delay});
+      sendNet({t:"rom",name:netplay.rom.name,b64:abToB64(netplay.rom.ab)});
+      sendNet({t:"start"});
+      startDuel();
+    }
+  });
+  c.on("data",onNetData);
+  c.on("close",()=>endNet("Connexion fermée"));
+  c.on("error",()=>endNet("Erreur de connexion"));
+}
+function hostGame(){
+  if(typeof Peer==="undefined"){ toast("Module réseau non chargé (Internet ?)"); return; }
+  if(!netplay.rom){ toast("Choisis d'abord un jeu à partager"); return; }
+  endNet("");                        // repart propre
+  const code=genCode(); netplay.role="host";
+  netStatus("Création de la partie…");
+  netplay.peer=new Peer("nesduel-"+code);
+  netplay.peer.on("open",()=>netStatus('Donne ce code à l\'autre joueur :<br><span class="mono neon" style="font-size:30px">'+code+'</span><br><span class="hint">En attente de connexion… (même Wi‑Fi conseillé)</span>'+quitBtn()));
+  netplay.peer.on("connection",c=>setupConn(c,true));
+  netplay.peer.on("error",e=>netStatus('Erreur : '+e.type+' — réessaie'+quitBtn()));
+}
+function joinGame(code){
+  if(typeof Peer==="undefined"){ toast("Module réseau non chargé (Internet ?)"); return; }
+  endNet("");
+  netplay.role="guest";
+  netStatus("Connexion à la partie "+code+"…");
+  netplay.peer=new Peer();
+  netplay.peer.on("open",()=>{ setupConn(netplay.peer.connect("nesduel-"+code,{reliable:true}),false); });
+  netplay.peer.on("error",e=>netStatus('Erreur : '+e.type+' — vérifie le code'+quitBtn()));
+}
+function endNet(msg){
+  try{ if(netplay.conn) netplay.conn.close(); }catch(e){}
+  try{ if(netplay.peer) netplay.peer.destroy(); }catch(e){}
+  clearInterval(netplay.pingIv);
+  const wasActive=netplay.active;
+  netplay.active=false; netplay.started=false; netplay.conn=null; netplay.peer=null;
+  netplay.localBuf.clear(); netplay.remoteBuf.clear(); localBtn=0;
+  if(nes){ for(let b=0;b<8;b++){ nes.buttonUp(1,b); nes.buttonUp(2,b); } }
+  if(msg){ netStatus("<b>"+msg+"</b>"); toast(msg); }
+  if(wasActive){ running=false; showHome(); }
+}
+function syncOnlineUI(){
+  if(lastRom && !netplay.rom) netplay.rom=lastRom;
+  $("#netGame").textContent = netplay.rom ? ("Jeu : "+netplay.rom.name) : "Aucun jeu sélectionné";
+  seg($("#netDelay"),String(netplay.delay),v=>{ netplay.delay=+v; });
+  $("#netPick").onclick=()=>$("#netfile").click();
+  $("#netHost").onclick=hostGame;
+  $("#netJoinBtn").onclick=()=>{ $("#netJoinBox").style.display="block"; };
+  $("#netConnect").onclick=()=>{ const c=$("#netCode").value.trim(); if(c) joinGame(c); else toast("Entre un code"); };
+}
+$("#netfile").addEventListener("change",async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(!/\.nes$/i.test(f.name)){ toast("Fichier .nes requis"); return; }
+  netplay.rom={name:f.name, ab:await f.arrayBuffer()};
+  $("#netGame").textContent="Jeu : "+f.name; e.target.value="";
+});
+
+/* ============================================================
+   Manette physique (Gamepad API) — détection + mappage auto/manuel
+   ============================================================ */
+const GP_BTN={UP:B.BUTTON_UP,DOWN:B.BUTTON_DOWN,LEFT:B.BUTTON_LEFT,RIGHT:B.BUTTON_RIGHT,
+  A:B.BUTTON_A,B:B.BUTTON_B,START:B.BUTTON_START,SELECT:B.BUTTON_SELECT};
+const GP_ACTS=[["A","A"],["B","B"],["START","Start"],["SELECT","Select"],
+  ["UP","Haut"],["DOWN","Bas"],["LEFT","Gauche"],["RIGHT","Droite"],["TA","Turbo A"],["TB","Turbo B"]];
+const GP_DEFAULT={UP:{k:"btn",i:12},DOWN:{k:"btn",i:13},LEFT:{k:"btn",i:14},RIGHT:{k:"btn",i:15},
+  A:{k:"btn",i:1},B:{k:"btn",i:0},START:{k:"btn",i:9},SELECT:{k:"btn",i:8},TA:{k:"btn",i:2},TB:{k:"btn",i:3}};
+
+function getActiveGamepad(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[];
+  for(let i=0;i<p.length;i++) if(p[i]) return p[i]; }catch(e){} return null; }
+function gpBtnOn(b,gp){ if(!b) return false;
+  if(b.k==="btn"){ const x=gp.buttons[b.i]; return !!x && (x.pressed||x.value>0.5); }
+  if(b.k==="axis"){ const a=gp.axes[b.i]; return a!=null && (b.d<0?a<-0.5:a>0.5); }
+  return false; }
+function stickDir(gp,name){ const a=gp.axes; if(!a||a.length<2) return false;
+  if(name==="UP") return a[1]<-0.45; if(name==="DOWN") return a[1]>0.45;
+  if(name==="LEFT") return a[0]<-0.45; if(name==="RIGHT") return a[0]>0.45; return false; }
+function pollGamepad(){
+  const g=settings.pad.gamepad; if(!g.enabled) return;
+  const gp=getActiveGamepad(); if(!gp) return;
+  for(const name in GP_BTN){
+    let on=gpBtnOn(g.map[name],gp);
+    if(name==="UP"||name==="DOWN"||name==="LEFT"||name==="RIGHT") on=on||stickDir(gp,name);
+    setAct(name,on);
+  }
+  ["TA","TB"].forEach(n=>setAct(n, gpBtnOn(g.map[n],gp)));
+}
+function setAct(name,on){
+  if(!!gpPrev[name]===!!on) return; gpPrev[name]=!!on;      // détection de front
+  if(name==="TA"||name==="TB"){ turbo[name].on=on; if(!on) release(turbo[name].btn); }
+  else { on?press(GP_BTN[name]):release(GP_BTN[name]); }
+}
+function labelOf(a){ const f=GP_ACTS.find(x=>x[0]===a); return f?f[1]:a; }
+function bindLabel(b){ if(!b) return "—"; return b.k==="btn"?("Bouton "+b.i):("Axe "+b.i+(b.d<0?" −":" +")); }
+function snapshotPad(gp){ return {btn:gp.buttons.map(b=>b.value>0.6), ax:gp.axes.slice()}; }
+function startCapture(action){
+  const gp=getActiveGamepad(); if(!gp){ toast("Aucune manette détectée"); return; }
+  gpListen=action; gpBase=snapshotPad(gp); updateGamepadRows();
+  clearInterval(gpIv);
+  gpIv=setInterval(()=>{
+    const g=getActiveGamepad(); if(!g) return;
+    for(let i=0;i<g.buttons.length;i++){ if(g.buttons[i].value>0.6 && !gpBase.btn[i]){ bindAction(action,{k:"btn",i}); return; } }
+    for(let i=0;i<g.axes.length;i++){ const v=g.axes[i]; if(Math.abs(v)>0.7 && Math.abs(gpBase.ax[i]||0)<0.5){ bindAction(action,{k:"axis",i,d:v<0?-1:1}); return; } }
+  },60);
+  clearTimeout(gpTimeout); gpTimeout=setTimeout(()=>{ if(gpListen){ stopCapture(); toast("Aucun bouton détecté"); } },6000);
+}
+function bindAction(action,b){ settings.pad.gamepad.map[action]=b; save(); stopCapture(); toast("« "+labelOf(action)+" » → "+bindLabel(b)); }
+function stopCapture(){ clearInterval(gpIv); clearTimeout(gpTimeout); gpListen=null; updateGamepadRows(); }
+function updateGamepadRows(){
+  const box=$("#gpRows"); if(!box) return;
+  box.innerHTML=GP_ACTS.map(([id,lb])=>{
+    const listening=gpListen===id;
+    return '<div class="row" style="padding:9px 0"><div class="lab">'+lb+'</div>'
+      +'<span class="mono" style="min-width:92px;text-align:right;color:'+(listening?"var(--amber)":"var(--neon-soft)")+'">'
+      +(listening?"Appuie…":bindLabel(settings.pad.gamepad.map[id]))+'</span>'
+      +'<button class="btn ghost" data-cfg="'+id+'" style="margin-left:10px;padding:7px 12px">'+(listening?"Annuler":"Configurer")+'</button></div>';
+  }).join("");
+  $$("[data-cfg]",box).forEach(btn=>btn.onclick=()=>{ const a=btn.dataset.cfg; (gpListen===a)?stopCapture():startCapture(a); });
+}
+function updateGpStatus(){
+  const gp=getActiveGamepad(), el=$("#gpStatus"); if(!el) return;
+  if(gp){ let name=(gp.id||"manette").replace(/\(.*?\)/g,"").trim()||"manette";
+    el.innerHTML='Manette détectée : <b class="neon">'+name.slice(0,42)+'</b>'; }
+  else el.textContent="Aucune manette détectée — connecte-la puis appuie sur un bouton.";
+}
+function autoMapGamepad(){
+  const gp=getActiveGamepad();
+  settings.pad.gamepad.map=JSON.parse(JSON.stringify(GP_DEFAULT)); save(); updateGamepadRows();
+  toast(gp && gp.mapping==="standard" ? "Mappage automatique appliqué ✓" : "Mappage standard appliqué — ajuste si besoin");
+}
+function syncGamepadUI(){
+  updateGpStatus();
+  sw($("#gpOn"),settings.pad.gamepad.enabled,v=>{ settings.pad.gamepad.enabled=v; save(); });
+  $("#gpAuto").onclick=autoMapGamepad;
+  $("#gpReset").onclick=()=>{ settings.pad.gamepad.map=JSON.parse(JSON.stringify(GP_DEFAULT)); save(); updateGamepadRows(); toast("Mappage réinitialisé"); };
+  updateGamepadRows();
+}
+function gamepadPresent(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]) return true; }catch(e){} return false; }
+function updatePadForGamepad(){
+  const hide = settings.pad.gamepad.enabled && gamepadPresent();
+  padEl.classList.toggle("on", editMode || (!hide && settings.pad.show));
+}
+window.addEventListener("gamepadconnected",e=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette détectée — manette tactile masquée"); });
+window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette déconnectée"); });
+
+/* --- État & système : accueil / pause / reset / vitesse / sauvegardes / capture / veille --- */
+function refreshResumeBtn(){ const r=$("#btnResume"); if(r) r.classList.toggle("hidden", !currentName); }
+function showHome(){ if(nes) running=false; setWake(false); suspendAudio(); $("#home").classList.remove("hidden"); refreshResumeBtn(); }
+function hideHome(){ $("#home").classList.add("hidden"); if(nes){ running=true; resumeAudio(); if(settings.system.wake) setWake(true); } }
+function resetGame(){ if(nes){ nes.reset(); toast("Jeu réinitialisé"); } else toast("Aucun jeu chargé"); }
+
+async function setWake(on){
+  try{
+    if(on && "wakeLock" in navigator){ if(!wakeLock) wakeLock=await navigator.wakeLock.request("screen"); }
+    else if(wakeLock){ await wakeLock.release(); wakeLock=null; }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible" && settings.system.wake && running) setWake(true);
+});
+
+async function saveState(slot){
+  if(!nes||!currentName){ toast("Lance un jeu d'abord"); return; }
+  try{ const data=nes.toJSON(); await idbPut("states",{name:currentName+"#"+slot, data, ts:Date.now()});
+    toast("État sauvegardé — emplacement "+slot); }
+  catch(e){ toast("Échec de la sauvegarde"); }
+}
+async function loadState(slot){
+  if(!nes||!currentName){ toast("Lance un jeu d'abord"); return; }
+  const rec=await idbGet("states", currentName+"#"+slot);
+  if(!rec){ toast("Emplacement "+slot+" vide"); return; }
+  try{ nes.fromJSON(rec.data); toast("État chargé — emplacement "+slot); }
+  catch(e){ toast("Échec du chargement"); }
+}
+function screenshot(){
+  const c=document.createElement("canvas"); c.width=SCREEN_W; c.height=SCREEN_H;
+  c.getContext("2d").putImageData(image,0,0);
+  const a=document.createElement("a");
+  a.href=c.toDataURL("image/png");
+  a.download=(currentName||"nes").replace(/\.nes$/i,"")+"_"+Date.now()+".png";
+  a.click(); toast("Capture enregistrée");
+}
+function syncSystemUI(){
+  $("#sysResume").onclick=()=>{ closeSheet(); hideHome(); };
+  $("#sysHome").onclick=()=>{ closeSheet(); showHome(); };
+  $("#sysReset").onclick=resetGame;
+  seg($("#sysSpeed"), String(settings.system.speed), v=>{ settings.system.speed=parseFloat(v); speed=parseFloat(v); save(); });
+  speed=settings.system.speed;
+  sw($("#sysFF"), fastForward, v=>{ fastForward=v; });
+  sw($("#sysWake"), settings.system.wake, v=>{ settings.system.wake=v; save(); setWake(v && running); });
+  $("#sysFull").onclick=toggleFull;
+  $("#sysShot").onclick=screenshot;
+  const box=$("#sysSlots"); box.innerHTML="";
+  for(let s=1;s<=3;s++){
+    const d=document.createElement("div"); d.style.display="flex"; d.style.gap="6px";
+    d.innerHTML='<button class="btn" style="flex:1" data-save="'+s+'">Sauver '+s+'</button>'
+      +'<button class="btn ghost" style="flex:1" data-load="'+s+'">Charger '+s+'</button>';
+    box.appendChild(d);
+  }
+  $$("[data-save]",box).forEach(b=>b.onclick=()=>saveState(+b.dataset.save));
+  $$("[data-load]",box).forEach(b=>b.onclick=()=>loadState(+b.dataset.load));
+}
+
+/* prépare l'audio au premier geste, mais le laisse suspendu tant qu'aucun jeu ne tourne */
+addEventListener("pointerdown",function once(){ initAudio(); removeEventListener("pointerdown",once); },{once:true});
+
+/* ============================================================
+   10. Démarrage
+   ============================================================ */
+openDB();
+applyVideo();
+speed=settings.system.speed;
+if(typeof jsnes==="undefined"){
+  setTimeout(()=>{ if(typeof jsnes==="undefined") toast("Cœur d'émulation non chargé — vérifie ta connexion Internet."); },1500);
+}
+})();
+</script>
+</body>
+</html>
