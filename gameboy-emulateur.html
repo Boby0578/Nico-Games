@@ -250,6 +250,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
   <div class="sheet" id="sh-system"><div class="card">
     <h2><span class="neon">Système</span><button class="close" data-close>✕</button></h2>
+    <div class="chip" id="sysThreads" style="display:block;margin-bottom:12px"></div>
     <div class="row"><div class="lab">Retour au jeu</div><button class="btn solid" id="sysResume">Reprendre</button></div>
     <div class="row"><div class="lab">Menu principal</div><button class="btn ghost" id="sysHome">Ouvrir le menu</button></div>
     <div class="row"><div class="lab">Réinitialiser le jeu</div><button class="btn" id="sysReset">Reset</button></div>
@@ -478,6 +479,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     const url=URL.createObjectURL(new Blob([ab]));
     window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
+    if(self.crossOriginIsolated && ["snes","gba","segaMD","pce"].indexOf(SYS.core)>=0) window.EJS_threads=true;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
     if(SYS.core==="gb") window.EJS_defaultOptions={gambatte_gb_colorization: settings.video.color?"GBC":"disabled"};
     if(SYS.core==="psx") window.EJS_defaultOptions={"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"disabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"};
@@ -567,7 +569,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function syncPerf(){
     $("#pkThreads").innerHTML = "Anti-grésillement : monte la <b>Fluidité</b> si besoin. La PS1 est très lourde pour un navigateur : les jeux 2D passent bien ; les gros jeux 3D peuvent garder un léger grésillement (limite du navigateur, pas un réglage).";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
-  function syncSystem(){ $("#sysResume").onclick=()=>{closeSheet();hideHome();}; $("#sysHome").onclick=()=>{closeSheet();showHome();}; $("#sysFull").onclick=toggleFull; $("#sysReset").onclick=resetGame; $("#sysFF").onclick=toggleFF; $("#sysShot").onclick=screenshot; sw($("#sysWake"),wakeOn,v=>setWake(v));
+  function syncSystem(){
+    const heavy=["snes","gba","segaMD","pce"].indexOf(SYS.core)>=0;
+    const st=$("#sysThreads");
+    if(!heavy) st.style.display="none";
+    else st.innerHTML = self.crossOriginIsolated
+      ? "Son fluide (multi-fil) : <b class=\"neon\">ACTIF ✓</b>"
+      : "Son fluide (multi-fil) : <b style=\"color:var(--amber)\">inactif</b> — ouvre l'adresse <b>Vercel</b> (pas GitHub) pour supprimer les grésillements.";
+    $("#sysResume").onclick=()=>{closeSheet();hideHome();}; $("#sysHome").onclick=()=>{closeSheet();showHome();}; $("#sysFull").onclick=toggleFull; $("#sysReset").onclick=resetGame; $("#sysFF").onclick=toggleFF; $("#sysShot").onclick=screenshot; sw($("#sysWake"),wakeOn,v=>setWake(v));
     const box=$("#sysSlots"); box.innerHTML="";
     for(let s=1;s<=3;s++){ const d=document.createElement("div"); d.style.display="flex"; d.style.gap="6px";
       d.innerHTML='<button class="btn" style="flex:1" data-save="'+s+'">Sauver '+s+'</button><button class="btn ghost" style="flex:1" data-load="'+s+'">Charger '+s+'</button>'; box.appendChild(d); }
