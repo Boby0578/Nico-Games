@@ -287,7 +287,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66}};
   function defLayout(){ const L={dpad:{...DEF_POS.dpad}}; SYS.buttons.forEach(b=>{ L[b.id]={...(DEF_POS[b.id]||{x:50,y:60,size:80})}; }); return L; }
 
-  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:1,interp:"gaussian"},
+  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
     touch:{show:true,opacity:85,type:"dpad",vibro:true},gamepad:{autohide:true},layout:defLayout()});
   // complète la disposition si des boutons manquent
   if(!settings.layout) settings.layout=defLayout();
@@ -299,7 +299,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   if(settings.touch.vibro==null) settings.touch.vibro=true;
   if(settings.sound.eqon==null) settings.sound.eqon=false;
   if(!settings._audiofix){ settings.sound.eqon=false; settings._audiofix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
-  if(!settings.psx) settings.psx={frameskip:1,interp:"gaussian"};
+  if(!settings.psx) settings.psx={frameskip:2,interp:"simple"};
+  if(!settings._perffix){ settings.psx={frameskip:2,interp:"simple"}; settings._perffix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
 
@@ -471,10 +472,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     const url=URL.createObjectURL(new Blob([ab]));
     window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
-    if(SYS.core==="psx" && self.crossOriginIsolated) window.EJS_threads=true;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
     if(SYS.core==="gb") window.EJS_defaultOptions={gambatte_gb_colorization: settings.video.color?"GBC":"disabled"};
-    if(SYS.core==="psx") window.EJS_defaultOptions={"pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"enabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"};
+    if(SYS.core==="psx") window.EJS_defaultOptions={"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"disabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"};
     if(NETPLAY){ window.EJS_netplay=true; window.EJS_netplayServer=NETPLAY; }
     if(SYS.bios){ let biosUrl=null;
       try{ if(window.PS1_BIOS_B64){ const bin=atob(window.PS1_BIOS_B64); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); biosUrl=URL.createObjectURL(new Blob([u8])); } }catch(e){}
@@ -559,9 +559,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function syncGamepad(){ updateGpStatus(); sw($("#gAuto"),settings.gamepad.autohide,v=>{settings.gamepad.autohide=v;save();applyPad();}); }
   function applyPsx(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(gm&&gm.setVariable){ gm.setVariable("pcsx_rearmed_frameskip",String(settings.psx.frameskip)); gm.setVariable("pcsx_rearmed_spu_interpolation",settings.psx.interp); } }catch(e){} }
   function syncPerf(){
-    $("#pkThreads").innerHTML = self.crossOriginIsolated
-      ? "Multi-fil (son fluide) : <b class=\"neon\">ACTIF ✓</b>"
-      : "Multi-fil : <b style=\"color:var(--amber)\">INACTIF</b> — ouvre l'adresse <b>Vercel</b> (pas GitHub), avec vercel.json à la racine, puis redéploie. Sans ça le son grésillera.";
+    $("#pkThreads").innerHTML = "Anti-grésillement : le multi-fil a été <b>désactivé</b> (il chargeait un cœur trop lourd). Pour un son net, <b>monte la Fluidité</b> ci-dessous jusqu'à ce que ça ne grésille plus.";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
   function syncSystem(){ $("#sysResume").onclick=()=>{closeSheet();hideHome();}; $("#sysHome").onclick=()=>{closeSheet();showHome();}; $("#sysFull").onclick=toggleFull; $("#sysReset").onclick=resetGame; $("#sysFF").onclick=toggleFF; $("#sysShot").onclick=screenshot; sw($("#sysWake"),wakeOn,v=>setWake(v));
     const box=$("#sysSlots"); box.innerHTML="";
