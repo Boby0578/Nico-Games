@@ -23,7 +23,7 @@ body.fs.barpeek #topbar{transform:none;opacity:1;pointer-events:auto}
 body.fs #wrap{inset:0}
 #load{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
 #load h1{font-family:"Orbitron";font-weight:900;font-size:26px;margin:0;color:var(--neon);text-shadow:var(--glow)}
-#load p{margin:0;max-width:440px;color:var(--neon-soft);line-height:1.5}
+#load p{margin:0;max-width:460px;color:var(--neon-soft);line-height:1.5}
 .btn{font-family:"Rajdhani";font-weight:700;font-size:15px;padding:11px 18px;border-radius:11px;border:1px solid #1f5a1f;background:#0a1a0a;color:var(--neon);cursor:pointer}
 .btn.solid{background:var(--neon);color:#052b05;border-color:var(--neon);box-shadow:var(--glow)}
 .btn:active{transform:translateY(1px)}
@@ -34,13 +34,13 @@ small.note{color:#7fcf8f;font-size:13px}
 #stage{position:relative;flex:1;background:#000;display:flex;align-items:center;justify-content:center;min-height:0}
 #screen{display:block;max-width:100%;max-height:100%;image-rendering:pixelated;background:#000}
 body.smooth #screen{image-rendering:auto}
-body.fill #screen{width:100%;height:100%;max-width:none;max-height:none;object-fit:fill}
-/* manette tactile */
+body.sz-fill #screen{width:100%;height:100%;max-width:none;max-height:none;object-fit:fill}
+body.sz-md #screen{max-width:75%;max-height:75%}
+body.sz-sm #screen{max-width:55%;max-height:55%}
 #pad{position:absolute;inset:0;pointer-events:none;z-index:20}
 #pad .grp{position:absolute;bottom:16px;pointer-events:none}
 .dpad{left:14px;width:150px;height:150px}
 .acts{right:14px;width:170px;height:150px}
-.pillrow{left:50%;transform:translateX(-50%);bottom:auto;top:8px;display:flex;gap:12px}
 .k{position:absolute;pointer-events:auto;display:grid;place-items:center;user-select:none;
   border:1px solid #2a7a2a;background:rgba(10,26,10,.82);color:var(--neon);border-radius:12px;font-family:"Orbitron";font-weight:900;font-size:15px;backdrop-filter:blur(2px)}
 .k.round{border-radius:50%}
@@ -52,24 +52,29 @@ body.fill #screen{width:100%;height:100%;max-width:none;max-height:none;object-f
 .k.center{left:50px;top:50px;width:50px;height:50px;background:rgba(10,26,10,.5);border-color:#1f5a1f;color:#1f5a1f}
 .k.bA{right:8px;top:38px;width:74px;height:74px}
 .k.bB{right:82px;top:70px;width:74px;height:74px}
-.pill{position:relative;pointer-events:auto;padding:9px 16px;border-radius:20px;border:1px solid #2a7a2a;background:rgba(10,26,10,.82);color:var(--neon);font-family:"Orbitron";font-weight:900;font-size:12px}
-.pill:active,.pill.on{background:var(--neon);color:#052b05;box-shadow:var(--glow)}
-.pill.start{border-color:var(--neon);color:var(--neon);font-size:13px;padding:11px 20px}
-.pill.start:before{content:"\25B6 ";font-size:10px}
-/* menu options */
+.side{position:absolute;top:50%;transform:translateY(-50%);z-index:22;pointer-events:auto;writing-mode:vertical-rl;
+  padding:22px 9px;border:1px solid #2a7a2a;background:rgba(10,26,10,.88);color:var(--neon);
+  font-family:"Orbitron";font-weight:900;font-size:13px;letter-spacing:2px;backdrop-filter:blur(2px)}
+.side.a{left:0;border-left:none;border-radius:0 16px 16px 0}
+.side.b{right:0;border-right:none;border-radius:16px 0 0 16px}
+.side:active,.side.on{background:var(--neon);color:#052b05;box-shadow:var(--glow)}
+body.started .side{display:none}
 .sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:18px}
 .sheet.open{display:flex}
-.sheet .card{width:100%;max-width:440px;background:#08130a;border:1px solid #1f5a1f;border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
-.sheet h2{font-family:"Orbitron";font-weight:900;font-size:17px;margin:0 0 14px;color:var(--neon);display:flex;align-items:center}
+.sheet .card{width:100%;max-width:460px;max-height:86vh;overflow:auto;background:#08130a;border:1px solid #1f5a1f;border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.sheet h2{font-family:"Orbitron";font-weight:900;font-size:17px;margin:0 0 6px;color:var(--neon);display:flex;align-items:center}
 .sheet h2 .close{margin-left:auto;background:none;border:none;color:#9dffb0;font-size:20px;cursor:pointer}
-.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid #10280f}
-.row:first-of-type{border-top:none}
+.sub{font-family:"Orbitron";font-weight:900;font-size:11px;color:#7fcf8f;letter-spacing:1.5px;margin:16px 0 2px;text-transform:uppercase}
+.row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #10280f}
 .lab{flex:1;font-weight:600}
 .lab small{display:block;color:#7fcf8f;font-weight:500;font-size:12px;margin-top:2px}
 .switch{width:52px;height:30px;border-radius:16px;background:#12331a;border:1px solid #1f5a1f;position:relative;cursor:pointer;flex:none}
 .switch b{position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:50%;background:#3a6b3f;transition:.18s}
 .switch.on{background:rgba(57,255,20,.25);border-color:var(--neon)}
 .switch.on b{left:24px;background:var(--neon);box-shadow:var(--glow)}
+.mbtn{min-width:104px;text-align:center}
+.mbtn.cap{background:var(--amber);color:#2b1c00;border-color:var(--amber);animation:blink .8s infinite}
+@keyframes blink{50%{opacity:.5}}
 .gpfocus{outline:3px solid var(--neon)!important;outline-offset:2px;box-shadow:0 0 0 3px rgba(57,255,20,.30),0 0 16px rgba(57,255,20,.55)!important;border-radius:10px}
 #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#081a08;border:1px solid #2a7a2a;color:var(--neon-soft);
   padding:10px 16px;border-radius:10px;z-index:120;opacity:0;transition:opacity .25s;max-width:90%;text-align:center;font-weight:600}
@@ -88,8 +93,9 @@ input[type=file]{display:none}
 <div id="wrap">
   <div id="load">
     <h1>GAME &amp; WATCH</h1>
-    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.<br>Une fois chargé, appuie sur <b>GAME A</b> (ou <b>GAME B</b>) pour lancer la partie.</p>
+    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.<br>Une fois chargé, appuie sur <b>GAME A</b> (colonne de gauche) pour lancer la partie.</p>
     <button class="btn solid" id="pick">Choisir un fichier .mgw</button>
+    <button class="btn" id="pickOpts">&#9881; Options (vidéo &amp; manette)</button>
     <div id="status"></div>
     <small class="note">Moteur : cœur libretro <b>gw</b> (WebAssembly) via Nostalgist.js.</small>
   </div>
@@ -97,10 +103,8 @@ input[type=file]{display:none}
   <div id="stage" class="hidden">
     <canvas id="screen" width="320" height="240"></canvas>
     <div id="pad">
-      <div class="grp pillrow">
-        <div class="pill start" data-b="start">GAME A</div>
-        <div class="pill start" data-b="select">GAME B</div>
-      </div>
+      <div class="side a" data-b="start" data-start="1">GAME A</div>
+      <div class="side b" data-b="select" data-start="1">GAME B</div>
       <div class="grp dpad">
         <div class="k up" data-b="up">&#9650;</div>
         <div class="k dn" data-b="down">&#9660;</div>
@@ -116,14 +120,23 @@ input[type=file]{display:none}
   </div>
 </div>
 
-<!-- menu Vidéo & options -->
 <div class="sheet" id="sheet">
   <div class="card">
-    <h2>Vidéo &amp; options<button class="close" id="shClose">&#10005;</button></h2>
-    <div class="row"><div class="lab">Remplir l'écran totalement<small>étire l'image sur toute la surface, sans bandes noires</small></div><div class="switch" id="swFill"><b></b></div></div>
+    <h2>Options<button class="close" id="shClose">&#10005;</button></h2>
+
+    <div class="sub">Vidéo</div>
+    <div class="row"><div class="lab">Taille du jeu<small>agrandir, réduire ou remplir tout l'écran</small></div><select id="vSize" style="background:#0a1a0a;color:var(--neon);border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="fill">Remplir tout l'écran</option><option value="lg">Grande (ajustée)</option><option value="md">Moyenne</option><option value="sm">Petite</option></select></div>
     <div class="row"><div class="lab">Lissage<small>adoucit les pixels (off = net)</small></div><div class="switch" id="swSmooth"><b></b></div></div>
-    <div class="row"><div class="lab">Bouton TIME<small>règle l'horloge de la console (rarement utile pour jouer)</small></div><button class="btn" id="shTime">Appuyer</button></div>
     <div class="row"><div class="lab">Plein écran<small>occupe tout l'écran de la tablette</small></div><button class="btn" id="shFull">Activer / quitter</button></div>
+
+    <div class="sub">Manette — mappage</div>
+    <div id="mapList"></div>
+    <div class="row"><div class="lab">Réinitialiser le mappage</div><button class="btn" id="mapReset">Par défaut</button></div>
+    <small class="note" style="display:block;margin-top:6px">Touche un bouton « Assigner » puis appuie sur la touche voulue de ta manette. Le clavier et l'écran tactile restent toujours actifs.</small>
+
+    <div class="sub">Partie</div>
+    <div class="row"><div class="lab">Démarrer un mode<small>GAME A = normal · GAME B = plus rapide</small></div><div style="display:flex;gap:8px"><button class="btn" id="shGameA">GAME A</button><button class="btn" id="shGameB">GAME B</button></div></div>
+    <div class="row"><div class="lab">Bouton TIME<small>règle l'horloge (rarement utile pour jouer)</small></div><button class="btn" id="shTime">Appuyer</button></div>
     <div class="row"><div class="lab">Recommencer la partie</div><button class="btn" id="shReset">Réinitialiser</button></div>
     <div class="row"><div class="lab">Charger un autre jeu</div><button class="btn" id="shLoad">Fichier .mgw</button></div>
   </div>
@@ -143,9 +156,35 @@ let nostalgist = null, wakeLock = null;
 
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),2600); }
 
+/* ---------- mappage manette ---------- */
+const ACTIONS=[{id:"up",label:"Haut"},{id:"down",label:"Bas"},{id:"left",label:"Gauche"},{id:"right",label:"Droite"},
+  {id:"a",label:"A"},{id:"b",label:"B"},{id:"start",label:"GAME A"},{id:"select",label:"GAME B"},{id:"x",label:"TIME"}];
+const DEFAULT_MAP={up:12,down:13,left:14,right:15,a:0,b:1,start:9,select:8,x:2};
+let mapping=loadMap(), capturing=null;
+function loadMap(){ try{ return Object.assign({},DEFAULT_MAP,JSON.parse(localStorage.getItem("gw_map")||"{}")); }catch(e){ return Object.assign({},DEFAULT_MAP); } }
+function saveMap(){ try{ localStorage.setItem("gw_map",JSON.stringify(mapping)); }catch(e){} }
+function buildMapUI(){
+  const box=$("#mapList"); box.innerHTML="";
+  ACTIONS.forEach(a=>{
+    const row=document.createElement("div"); row.className="row";
+    row.innerHTML='<div class="lab">'+a.label+'</div><button class="btn mbtn" data-act="'+a.id+'">'+labelFor(a.id)+'</button>';
+    box.appendChild(row);
+  });
+  box.querySelectorAll(".mbtn").forEach(btn=>btn.onclick=()=>startCapture(btn.dataset.act,btn));
+}
+function labelFor(id){ const v=mapping[id]; return v==null?"—":"Bouton "+v; }
+function startCapture(act,btn){
+  if(capturing) return;
+  capturing=act;
+  $$("#mapList .mbtn").forEach(b=>b.classList.remove("cap"));
+  btn.classList.add("cap"); btn.textContent="Appuie…";
+  toast("Appuie sur un bouton de la manette pour « "+ACTIONS.find(a=>a.id===act).label+" »");
+}
+$("#mapReset").onclick=()=>{ mapping=Object.assign({},DEFAULT_MAP); saveMap(); buildMapUI(); toast("Mappage réinitialisé"); };
+
+/* ---------- chargement du jeu ---------- */
 $("#pick").onclick = ()=> $("#file").click();
 $("#file").onchange = async e => { const f=e.target.files&&e.target.files[0]; if(f) await boot(f); };
-
 async function boot(file){
   const load=$("#load"), status=$("#status");
   status.innerHTML = '<div class="spin" style="margin:6px auto"></div><div style="margin-top:8px;color:var(--neon-soft)">Chargement du cœur Game &amp; Watch&#8230;</div>';
@@ -155,34 +194,37 @@ async function boot(file){
       element: $("#screen"),
       core: 'gw',
       rom: file,
-      retroarchConfig: { input_player1_analog_dpad_mode: 1 }
+      retroarchConfig: { input_player1_analog_dpad_mode: 1, input_autodetect_enable: false }
     });
     load.classList.add("hidden");
     $("#stage").classList.remove("hidden");
+    body.classList.remove("started");
     keepAwake(true);
     toast("Jeu chargé — GAME A pour démarrer");
   }catch(err){
     console.error(err);
-    status.innerHTML = '<div style="color:var(--amber);max-width:440px;line-height:1.5">Impossible de charger ce jeu.<br>Vérifie que le fichier est bien un <b>.mgw</b> valide, et que tu es connecté à Internet (le cœur se télécharge une première fois).</div>'
+    status.innerHTML = '<div style="color:var(--amber);max-width:460px;line-height:1.5">Impossible de charger ce jeu.<br>Vérifie que le fichier est bien un <b>.mgw</b> valide, et que tu es connecté à Internet (le cœur se télécharge une première fois).</div>'
       + '<button class="btn" id="retry" style="margin-top:14px">Réessayer</button>';
     const r=$("#retry"); if(r) r.onclick=()=>$("#file").click();
   }
 }
 
-/* manette tactile -> entrées RetroPad */
+/* ---------- entrées ---------- */
+function press(button,on){ if(!nostalgist) return;
+  try{ on?nostalgist.pressDown(button):nostalgist.pressUp(button); }
+  catch(e){ try{ on?nostalgist.pressDown({button}):nostalgist.pressUp({button}); }catch(_){} } }
+
+/* manette tactile */
 function bindKey(el){
   const b=el.dataset.b; if(!b) return;
-  const down=ev=>{ ev.preventDefault(); el.classList.add("on"); press(b,true); if(navigator.vibrate) try{navigator.vibrate(8);}catch(e){} };
+  const down=ev=>{ ev.preventDefault(); el.classList.add("on"); press(b,true); if(el.dataset.start) body.classList.add("started"); if(navigator.vibrate) try{navigator.vibrate(8);}catch(e){} };
   const up=ev=>{ el.classList.remove("on"); press(b,false); };
   el.addEventListener("pointerdown", ev=>{ try{el.setPointerCapture(ev.pointerId);}catch(e){} down(ev); });
   el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); el.addEventListener("lostpointercapture", up);
 }
-function press(button,on){ if(!nostalgist) return;
-  try{ on?nostalgist.pressDown(button):nostalgist.pressUp(button); }
-  catch(e){ try{ on?nostalgist.pressDown({button}):nostalgist.pressUp({button}); }catch(_){} } }
-$$("#pad .k[data-b], #pad .pill[data-b]").forEach(bindKey);
+$$("#pad .k[data-b], #pad .side[data-b]").forEach(bindKey);
 
-/* plein écran */
+/* ---------- plein écran & options ---------- */
 function toggleFull(){
   if(!document.fullscreenElement){ const el=document.documentElement; (el.requestFullscreen||el.webkitRequestFullscreen).call(el).catch(()=>{}); }
   else { (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
@@ -190,65 +232,85 @@ function toggleFull(){
 $("#btnFull").onclick = toggleFull;
 document.addEventListener("fullscreenchange", ()=> body.classList.toggle("fs", !!document.fullscreenElement));
 
-/* menu options */
-function openSheet(){ $("#sheet").classList.add("open"); syncSwitches(); if(body.classList.contains("fs")) body.classList.add("barpeek"); }
-function closeSheet(){ $("#sheet").classList.remove("open"); gp.clear(); }
+function openSheet(){ $("#sheet").classList.add("open"); syncVideoUI(); buildMapUI(); if(body.classList.contains("fs")) body.classList.add("barpeek"); }
+function closeSheet(){ $("#sheet").classList.remove("open"); capturing=null; gpClear(); }
 $("#btnMenu").onclick = openSheet;
+$("#pickOpts").onclick = openSheet;
 $("#shClose").onclick = closeSheet;
 $("#sheet").addEventListener("pointerdown", e=>{ if(e.target.id==="sheet") closeSheet(); });
 
-function syncSwitches(){
-  $("#swFill").classList.toggle("on", body.classList.contains("fill"));
-  $("#swSmooth").classList.toggle("on", body.classList.contains("smooth"));
-}
-$("#swFill").onclick = ()=>{ body.classList.toggle("fill"); syncSwitches(); toast(body.classList.contains("fill")?"Écran totalement rempli":"Proportions d'origine"); };
-$("#swSmooth").onclick = ()=>{ body.classList.toggle("smooth"); syncSwitches(); };
+let vid = loadVid();
+function loadVid(){ try{ return Object.assign({size:"lg",smooth:false}, JSON.parse(localStorage.getItem("gw_video")||"{}")); }catch(e){ return {size:"lg",smooth:false}; } }
+function saveVid(){ try{ localStorage.setItem("gw_video", JSON.stringify(vid)); }catch(e){} }
+function applyVid(){ body.classList.remove("sz-fill","sz-md","sz-sm");
+  if(vid.size==="fill") body.classList.add("sz-fill"); else if(vid.size==="md") body.classList.add("sz-md"); else if(vid.size==="sm") body.classList.add("sz-sm");
+  body.classList.toggle("smooth", !!vid.smooth); }
+function syncVideoUI(){ $("#swSmooth").classList.toggle("on", !!vid.smooth); const s=$("#vSize"); if(s) s.value=vid.size; }
+applyVid();
+$("#vSize").onchange = e=>{ vid.size=e.target.value; saveVid(); applyVid(); };
+$("#swSmooth").onclick = ()=>{ vid.smooth=!vid.smooth; saveVid(); applyVid(); syncVideoUI(); };
 $("#shFull").onclick = toggleFull;
 $("#shLoad").onclick = ()=>{ closeSheet(); $("#file").click(); };
-$("#shReset").onclick = ()=>{ if(nostalgist){ try{ nostalgist.restart(); toast("Partie réinitialisée"); }catch(e){ toast("Réinitialisation indisponible"); } } closeSheet(); };
-$("#shTime").onclick = ()=>{ press("x",true); setTimeout(()=>press("x",false),140); toast("TIME"); };
+function tap(btn){ press(btn,true); setTimeout(()=>press(btn,false),140); }
+$("#shTime").onclick = ()=> tap("x");
+$("#shGameA").onclick = ()=>{ tap("start"); body.classList.add("started"); closeSheet(); toast("GAME A"); };
+$("#shGameB").onclick = ()=>{ tap("select"); body.classList.add("started"); closeSheet(); toast("GAME B"); };
+$("#shReset").onclick = ()=>{ if(nostalgist){ try{ nostalgist.restart(); toast("Partie réinitialisée"); }catch(e){ toast("Réinitialisation indisponible"); } } body.classList.remove("started"); closeSheet(); };
 
-/* révéler la barre en plein écran par tape en haut */
 $("#stage").addEventListener("pointerdown", e=>{
   if(body.classList.contains("fs") && e.clientY<40){ body.classList.add("barpeek"); clearTimeout(window._bp); window._bp=setTimeout(()=>body.classList.remove("barpeek"),4500); }
 });
 
-/* garder l'écran allumé */
 async function keepAwake(on){ try{
   if(on && "wakeLock" in navigator){ wakeLock=await navigator.wakeLock.request("screen"); }
   else if(!on && wakeLock){ wakeLock.release(); wakeLock=null; }
 }catch(e){} }
 document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible" && !$("#stage").classList.contains("hidden")) keepAwake(true); });
 
-/* ==== navigation manette physique ==== */
-const gp = (function(){
-  let prev=[], els=[], idx=-1, rpt=0, pu=false,pd=false;
-  function pads(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]) return p[i]; }catch(e){} return null; }
-  function sheetOpen(){ return $("#sheet").classList.contains("open"); }
-  function clear(){ els.forEach(e=>e.classList.remove("gpfocus")); els=[]; idx=-1; }
-  function collect(){ els=[...$("#sheet .card").querySelectorAll(".switch,button")]; }
-  function focus(i){ els.forEach(e=>e.classList.remove("gpfocus")); if(!els.length){idx=-1;return;} idx=(i+els.length)%els.length; els[idx].classList.add("gpfocus"); try{els[idx].scrollIntoView({block:"nearest"});}catch(e){} }
-  function loop(){ requestAnimationFrame(loop);
-    const g=pads(); if(!g) return;
-    const b=g.buttons.map(x=>x&&x.pressed), ax=g.axes||[], now=performance.now();
-    const onLoad=!$("#load").classList.contains("hidden");
-    if(sheetOpen()){
-      if(!els.length){ collect(); focus(0); }
-      const up=b[12]||ax[1]<-0.5, dn=b[13]||ax[1]>0.5;
-      if((up||dn)&&((up&&!pu)||(dn&&!pd)||now>rpt)){ rpt=now+((up&&!pu)||(dn&&!pd)?300:180); focus(idx+(dn?1:-1)); }
-      pu=up;pd=dn;
-      if(b[0]&&!prev[0] && els[idx]) els[idx].click();
-      if(b[1]&&!prev[1]) closeSheet();
-    } else {
-      clear(); pu=pd=false;
-      if(onLoad && ((b[0]&&!prev[0])||(b[9]&&!prev[9]))) $("#file").click();
-      else if((b[16]&&!prev[16])||(b[8]&&b[9]&&!(prev[8]&&prev[9]))) openSheet();
-    }
-    prev=b;
+/* ---------- boucle manette : jeu + navigation menus + capture ---------- */
+let prev=[], padState={}, fEls=[], fIdx=-1, rpt=0, pUp=false, pDn=false;
+function firstPad(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]) return p[i]; }catch(e){} return null; }
+function sheetOpen(){ return $("#sheet").classList.contains("open"); }
+function loadVisible(){ return !$("#load").classList.contains("hidden"); }
+function gpClear(){ fEls.forEach(e=>e.classList.remove("gpfocus")); fEls=[]; fIdx=-1; }
+function gpFocus(i){ fEls.forEach(e=>e.classList.remove("gpfocus")); if(!fEls.length){fIdx=-1;return;} fIdx=(i+fEls.length)%fEls.length; fEls[fIdx].classList.add("gpfocus"); try{fEls[fIdx].scrollIntoView({block:"nearest"});}catch(e){} }
+function menuCollect(){ fEls=[...$("#sheet .card").querySelectorAll(".switch,button,select")]; }
+
+function loop(){ requestAnimationFrame(loop);
+  const gp=firstPad(); if(!gp){ prev=[]; return; }
+  const b=gp.buttons.map(x=>x&&x.pressed), ax=gp.axes||[], now=performance.now();
+
+  if(capturing){
+    for(let i=0;i<b.length;i++){ if(b[i] && !prev[i]){ mapping[capturing]=i; saveMap(); const done=capturing; capturing=null; buildMapUI(); toast(ACTIONS.find(a=>a.id===done).label+" = bouton "+i); break; } }
+    prev=b; return;
   }
-  requestAnimationFrame(loop);
-  return { clear };
-})();
+  if(sheetOpen()){
+    if(!fEls.length){ menuCollect(); gpFocus(0); }
+    const up=b[12]||ax[1]<-0.5, dn=b[13]||ax[1]>0.5;
+    if((up||dn)&&((up&&!pUp)||(dn&&!pDn)||now>rpt)){ rpt=now+(((up&&!pUp)||(dn&&!pDn))?300:170); gpFocus(fIdx+(dn?1:-1)); }
+    pUp=up;pDn=dn;
+    if(b[0]&&!prev[0] && fEls[fIdx]){ const el=fEls[fIdx]; if(el.tagName==="SELECT"){ el.selectedIndex=(el.selectedIndex+1)%el.options.length; el.dispatchEvent(new Event("change")); } else el.click(); }
+    if(b[1]&&!prev[1]) closeSheet();
+    prev=b; return;
+  }
+  gpClear(); pUp=pDn=false;
+  if(loadVisible()){ if((b[0]&&!prev[0])||(b[9]&&!prev[9])) $("#file").click(); prev=b; return; }
+  // en jeu : ouvrir le menu (Guide 16, ou L3+R3) sans gêner les boutons de jeu
+  if((b[16]&&!prev[16]) || (b[10]&&b[11]&&!(prev[10]&&prev[11]))){ openSheet(); prev=b; return; }
+  // appliquer le mappage
+  for(const a of ACTIONS){
+    let on=!!b[mapping[a.id]];
+    if(a.id==="up") on=on||ax[1]<-0.5;
+    if(a.id==="down") on=on||ax[1]>0.5;
+    if(a.id==="left") on=on||ax[0]<-0.5;
+    if(a.id==="right") on=on||ax[0]>0.5;
+    if(on && !padState[a.id]){ press(a.id,true); if(a.id==="start"||a.id==="select") body.classList.add("started"); }
+    else if(!on && padState[a.id]) press(a.id,false);
+    padState[a.id]=on;
+  }
+  prev=b;
+}
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
