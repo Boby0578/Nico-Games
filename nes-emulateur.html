@@ -204,6 +204,8 @@ input[type=text],input[type=number],select{background:#04140a;border:1px solid v
 .hidden{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .gpfocus{outline:3px solid var(--neon)!important;outline-offset:2px;box-shadow:0 0 0 3px rgba(57,255,20,.30),0 0 16px rgba(57,255,20,.55)!important;border-radius:10px}
+html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
 </style>
 </head>
 <body>
@@ -1373,6 +1375,7 @@ function updatePadForGamepad(){
   const hide = settings.pad.gamepad.enabled && gamepadPresent();
   padEl.classList.toggle("on", editMode || (!hide && settings.pad.show));
 }
+document.addEventListener("contextmenu",e=>e.preventDefault());
 window.addEventListener("gamepadconnected",e=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette détectée — manette tactile masquée"); });
 window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette déconnectée"); });
 

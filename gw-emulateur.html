@@ -9,7 +9,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;600;700&display=swap');
 :root{--bg:#050805;--neon:#39ff14;--neon-soft:#9dffb0;--amber:#ffb62e;--glow:0 0 10px rgba(57,255,20,.55)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg);color:#eafff0;font-family:"Rajdhani",system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
+html,body{margin:0;height:100%;background:var(--bg);color:#eafff0;font-family:"Rajdhani",system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #topbar{position:fixed;top:0;left:0;right:0;height:52px;z-index:60;display:flex;align-items:center;gap:10px;
   padding:0 12px;background:linear-gradient(#081208,#050805);border-bottom:1px solid #143a14;transition:transform .28s ease,opacity .28s ease}
 #topbar .brand{font-family:"Orbitron";font-weight:900;font-size:15px;letter-spacing:.5px;text-decoration:none;color:#eafff0}
@@ -54,6 +54,8 @@ body.fill #screen{width:100%;height:100%;max-width:none;max-height:none;object-f
 .k.bB{right:82px;top:70px;width:74px;height:74px}
 .pill{position:relative;pointer-events:auto;padding:9px 16px;border-radius:20px;border:1px solid #2a7a2a;background:rgba(10,26,10,.82);color:var(--neon);font-family:"Orbitron";font-weight:900;font-size:12px}
 .pill:active,.pill.on{background:var(--neon);color:#052b05;box-shadow:var(--glow)}
+.pill.start{border-color:var(--neon);color:var(--neon);font-size:13px;padding:11px 20px}
+.pill.start:before{content:"\25B6 ";font-size:10px}
 /* menu options */
 .sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:18px}
 .sheet.open{display:flex}
@@ -86,7 +88,7 @@ input[type=file]{display:none}
 <div id="wrap">
   <div id="load">
     <h1>GAME &amp; WATCH</h1>
-    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.</p>
+    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.<br>Une fois chargé, appuie sur <b>GAME A</b> (ou <b>GAME B</b>) pour lancer la partie.</p>
     <button class="btn solid" id="pick">Choisir un fichier .mgw</button>
     <div id="status"></div>
     <small class="note">Moteur : cœur libretro <b>gw</b> (WebAssembly) via Nostalgist.js.</small>
@@ -96,9 +98,8 @@ input[type=file]{display:none}
     <canvas id="screen" width="320" height="240"></canvas>
     <div id="pad">
       <div class="grp pillrow">
-        <div class="pill" data-b="start">GAME A</div>
-        <div class="pill" data-b="select">GAME B</div>
-        <div class="pill" data-b="x">TIME</div>
+        <div class="pill start" data-b="start">GAME A</div>
+        <div class="pill start" data-b="select">GAME B</div>
       </div>
       <div class="grp dpad">
         <div class="k up" data-b="up">&#9650;</div>
@@ -121,6 +122,7 @@ input[type=file]{display:none}
     <h2>Vidéo &amp; options<button class="close" id="shClose">&#10005;</button></h2>
     <div class="row"><div class="lab">Remplir l'écran totalement<small>étire l'image sur toute la surface, sans bandes noires</small></div><div class="switch" id="swFill"><b></b></div></div>
     <div class="row"><div class="lab">Lissage<small>adoucit les pixels (off = net)</small></div><div class="switch" id="swSmooth"><b></b></div></div>
+    <div class="row"><div class="lab">Bouton TIME<small>règle l'horloge de la console (rarement utile pour jouer)</small></div><button class="btn" id="shTime">Appuyer</button></div>
     <div class="row"><div class="lab">Plein écran<small>occupe tout l'écran de la tablette</small></div><button class="btn" id="shFull">Activer / quitter</button></div>
     <div class="row"><div class="lab">Recommencer la partie</div><button class="btn" id="shReset">Réinitialiser</button></div>
     <div class="row"><div class="lab">Charger un autre jeu</div><button class="btn" id="shLoad">Fichier .mgw</button></div>
@@ -136,6 +138,7 @@ import { Nostalgist } from 'https://esm.run/nostalgist';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const body = document.body;
+document.addEventListener("contextmenu", e=>e.preventDefault());
 let nostalgist = null, wakeLock = null;
 
 function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),2600); }
@@ -203,6 +206,7 @@ $("#swSmooth").onclick = ()=>{ body.classList.toggle("smooth"); syncSwitches(); 
 $("#shFull").onclick = toggleFull;
 $("#shLoad").onclick = ()=>{ closeSheet(); $("#file").click(); };
 $("#shReset").onclick = ()=>{ if(nostalgist){ try{ nostalgist.restart(); toast("Partie réinitialisée"); }catch(e){ toast("Réinitialisation indisponible"); } } closeSheet(); };
+$("#shTime").onclick = ()=>{ press("x",true); setTimeout(()=>press("x",false),140); toast("TIME"); };
 
 /* révéler la barre en plein écran par tape en haut */
 $("#stage").addEventListener("pointerdown", e=>{

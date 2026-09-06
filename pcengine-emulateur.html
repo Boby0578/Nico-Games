@@ -121,6 +121,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .gpfocus{outline:3px solid var(--neon)!important;outline-offset:2px;box-shadow:0 0 0 3px rgba(57,255,20,.30),0 0 16px rgba(57,255,20,.55)!important;border-radius:10px}
+html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
 </style>
 <style id="vidStyle"></style>
 </head>
@@ -601,7 +603,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function gamepadPresent(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]) return true; }catch(e){} return false; }
   function updateGpStatus(){ const el=$("#gpStatus"); if(!el) return; let gp=null; try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]){gp=p[i];break;} }catch(e){}
     if(gp){ let n=(gp.id||"manette").replace(/\(.*?\)/g,"").trim()||"manette"; el.innerHTML='Manette détectée : <b class="neon">'+n.slice(0,42)+'</b>'; } else el.textContent="Aucune manette détectée — connecte-la puis appuie sur un bouton."; }
-  window.addEventListener("gamepadconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette détectée — manette tactile masquée"); });
+  document.addEventListener("contextmenu",e=>e.preventDefault());
+    window.addEventListener("gamepadconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette détectée — manette tactile masquée"); });
   window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette déconnectée"); });
 
   /* ==== Navigation complète de l'interface à la manette physique ==== */

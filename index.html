@@ -78,6 +78,8 @@ footer{text-align:center;color:#5f8159;font-size:12.5px;padding:0 20px 26px;line
   box-shadow:0 0 10px #1fa2ff,0 0 22px rgba(18,216,250,.7);animation:pulseline 1.7s ease-in-out infinite}
 @keyframes pulseline{0%,100%{opacity:.35;box-shadow:0 0 6px #1fa2ff}50%{opacity:1;box-shadow:0 0 16px #1fa2ff,0 0 34px #12d8fa}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}.pulseline{animation:none}}
+html,body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+a,img,.card{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none}
 </style>
 </head>
 <body>
@@ -317,5 +319,6 @@ footer{text-align:center;color:#5f8159;font-size:12.5px;padding:0 20px 26px;line
   });
 })();
 </script>
+<script>document.addEventListener("contextmenu",e=>e.preventDefault());</script>
 </body>
 </html>
