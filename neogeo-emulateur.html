@@ -67,7 +67,7 @@ body:not(.native-pad) [class*="virtualGamepad"],body:not(.native-pad) [class*="V
 .stick .knob{position:absolute;top:50%;left:50%;width:44%;height:44%;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle at 35% 30%, var(--neon-soft), var(--neon-dim));box-shadow:0 0 18px rgba(57,255,20,.7);transition:transform .05s linear}
 #pad.edit .ctl{outline:2px dashed rgba(57,255,20,.5);outline-offset:2px;border-radius:8px}
 #pad.edit .ctl.sel{outline:2px solid var(--neon);box-shadow:0 0 20px rgba(57,255,20,.5)}
-#editbar{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:40;display:none;gap:10px;align-items:center;
+#editbar{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:40;display:none;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center;max-width:94%;
   padding:10px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line-strong);box-shadow:var(--glow);max-width:94vw;flex-wrap:wrap;justify-content:center}
 #editbar.on{display:flex}
 #editbar .selname{color:var(--neon);font-weight:700;min-width:70px}
@@ -184,6 +184,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Égaliseur &amp; limiteur<small>désactivé par défaut (son 100% natif, sans grésillement) — active-le si tu veux l'égaliseur (effet au prochain lancement)</small></div><div class="switch on" id="sEqOn"><b></b></div></div>
     <div class="row"><div class="lab">Volume</div><input type="range" id="sVol" min="0" max="100" value="70"></div>
     <div class="row"><div class="lab">Booster de volume<small>amplifie au-delà de 100 % — limiteur anti-saturation</small></div><input type="range" id="sBoost" min="100" max="300" value="100"></div>
+    <div class="row"><div class="lab">Limiteur anti-grésillement<small>lisse les pics sonores — aide sur DS et N64 (effet au prochain lancement)</small></div><div class="switch" id="sLimit"><b></b></div></div>
+    <div class="row"><div class="lab">Son mono<small>fusionne gauche/droite — peut réduire les craquements (effet au prochain lancement)</small></div><div class="switch" id="sMono"><b></b></div></div>
     <h3 class="neon" style="margin:16px 0 4px">Égaliseur</h3>
     <div class="row" style="border:none;padding:6px 0;flex-wrap:wrap">
       <div class="seg" id="eqPreset"><button data-v="flat">Plat</button><button data-v="bass">Basses</button><button data-v="treble">Aigus</button><button data-v="voice">Voix</button><button data-v="loud">Loudness</button></div>
@@ -299,7 +301,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
     FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66},D:{x:72,y:64,size:82},F1:{x:57,y:72,size:88},F2:{x:66,y:57,size:88},KP1:{x:74,y:34,size:54},KP2:{x:82,y:34,size:54},KP3:{x:90,y:34,size:54},KP4:{x:74,y:49,size:54},KP5:{x:82,y:49,size:54},KP6:{x:90,y:49,size:54},KP7:{x:74,y:64,size:54},KP8:{x:82,y:64,size:54},STAR:{x:90,y:64,size:54},HASH:{x:82,y:79,size:54},Z:{x:50,y:90,size:66},CU:{x:88,y:39,size:54},CD:{x:88,y:59,size:54},CL:{x:82,y:49,size:54},CR:{x:94,y:49,size:54}};
   function defLayout(){ const L={dpad:{...DEF_POS.dpad}}; SYS.buttons.forEach(b=>{ L[b.id]={...(DEF_POS[b.id]||{x:50,y:60,size:80})}; }); return L; }
 
-  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false,fill:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
+  const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false,fill:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false,limiter:false,mono:false}, psx:{frameskip:2,interp:"simple"},
     touch:{show:true,opacity:85,type:"dpad",vibro:true},gamepad:{autohide:true,custom:false,map:{}},layout:defLayout()});
   // complète la disposition si des boutons manquent
   if(!settings.layout) settings.layout=defLayout();
@@ -317,6 +319,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
     const ids=[4,5,6,7].concat(SYS.buttons.map(function(b){return b.retro;}));
     ids.forEach(function(r){ if(settings.gamepad.map[r]==null && DEF[r]!=null) settings.gamepad.map[r]=DEF[r]; }); })();
   if(settings.sound.eqon==null) settings.sound.eqon=false;
+  if(settings.sound.limiter==null) settings.sound.limiter=false;
+  if(settings.sound.mono==null) settings.sound.mono=false;
   if(!settings._audiofix){ settings.sound.eqon=false; settings._audiofix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   if(!settings.psx) settings.psx={frameskip:2,interp:"simple"};
   if(!settings._perffix){ settings.psx={frameskip:2,interp:"simple"}; settings._perffix=true; }
@@ -328,22 +332,24 @@ input,textarea{-webkit-user-select:text;user-select:text}
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
   const EQ_LABELS=["31","62","125","250","500","1k","2k","4k","8k","16k"];
   const EQ_PRESETS={flat:[0,0,0,0,0,0,0,0,0,0],bass:[8,7,5,2,0,0,0,0,0,0],treble:[0,0,0,0,0,2,4,6,7,8],voice:[-3,-2,0,2,4,4,2,0,-1,-2],loud:[6,4,2,0,-1,-1,0,2,4,6]};
-  let eqBands=[], eqGain=null, eqLimiter=null, eqInput=null, eqBuilt=false, eqCtx=null;
+  let eqBands=[], eqGain=null, eqLimiter=null, eqMono=null, eqInput=null, eqBuilt=false, eqCtx=null;
   const ORIG_CONNECT=(window.AudioNode&&AudioNode.prototype.connect)?AudioNode.prototype.connect:null;
   function buildEq(ctx){ if(eqBuilt&&eqCtx===ctx) return; eqCtx=ctx; eqBuilt=true;
     eqBands=EQ_FREQS.map((fr,i)=>{const b=ctx.createBiquadFilter();b.type=i===0?"lowshelf":i===EQ_FREQS.length-1?"highshelf":"peaking";b.frequency.value=fr;b.Q.value=1.1;b.gain.value=settings.sound.eq[i]||0;return b;});
     eqGain=ctx.createGain();
     eqLimiter=ctx.createDynamicsCompressor(); eqLimiter.threshold.value=-1.5;eqLimiter.knee.value=0;eqLimiter.ratio.value=20;eqLimiter.attack.value=0.002;eqLimiter.release.value=0.08;
     for(let i=0;i<eqBands.length-1;i++) ORIG_CONNECT.call(eqBands[i],eqBands[i+1]);
-    ORIG_CONNECT.call(eqBands[eqBands.length-1],eqGain); ORIG_CONNECT.call(eqGain,eqLimiter); ORIG_CONNECT.call(eqLimiter,ctx.destination);
+    ORIG_CONNECT.call(eqBands[eqBands.length-1],eqGain); ORIG_CONNECT.call(eqGain,eqLimiter); eqMono=ctx.createGain(); try{eqMono.channelCountMode="explicit";eqMono.channelInterpretation="speakers";eqMono.channelCount=settings.sound.mono?1:2;}catch(e){} ORIG_CONNECT.call(eqLimiter,eqMono); ORIG_CONNECT.call(eqMono,ctx.destination);
     eqInput=eqBands[0]; setEqGain(); applyEqState(); }
-  if(ORIG_CONNECT && settings.sound.eqon){ AudioNode.prototype.connect=function(dest){
+  if(ORIG_CONNECT && (settings.sound.eqon||settings.sound.limiter||settings.sound.mono)){ AudioNode.prototype.connect=function(dest){
     try{ if(dest&&this.context&&dest===this.context.destination&&!this.__eqRouted){ buildEq(this.context); this.__eqRouted=true; return ORIG_CONNECT.call(this,eqInput); } }catch(e){}
     return ORIG_CONNECT.apply(this,arguments); }; }
   function setEqGain(){ if(eqGain) eqGain.gain.value=(settings.sound.vol/100)*(settings.sound.boost/100); }
   function applyEqState(){ if(!eqBands.length) return;
-    if(settings.sound.eqon){ eqBands.forEach((b,i)=>b.gain.value=settings.sound.eq[i]||0); if(eqLimiter){eqLimiter.threshold.value=-1.5;eqLimiter.ratio.value=20;} }
-    else { eqBands.forEach(b=>b.gain.value=0); if(eqLimiter){eqLimiter.threshold.value=0;eqLimiter.ratio.value=1;} } }
+    if(settings.sound.eqon){ eqBands.forEach((b,i)=>b.gain.value=settings.sound.eq[i]||0); } else { eqBands.forEach(b=>b.gain.value=0); }
+    const limOn = settings.sound.eqon || settings.sound.limiter;
+    if(eqLimiter){ if(limOn){eqLimiter.threshold.value=-1.5;eqLimiter.ratio.value=20;} else {eqLimiter.threshold.value=0;eqLimiter.ratio.value=1;} }
+    if(eqMono){ try{ eqMono.channelCount = settings.sound.mono?1:2; }catch(e){} } }
   function applyEqBands(){ eqBands.forEach((b,i)=>{ if(b) b.gain.value=settings.sound.eq[i]||0; }); }
   function fmtDb(v){ return (v>0?"+":"")+v+" dB"; }
   function buildEqUI(){ const box=$("#eqBands"); if(!box)return; box.innerHTML="";
@@ -585,6 +591,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
     $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const s=$("#vFskip"); if(s){ s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
   function syncSound(){ sw($("#sEqOn"),settings.sound.eqon,v=>{settings.sound.eqon=v;save();applyEqState();});
+    sw($("#sLimit"),settings.sound.limiter,v=>{settings.sound.limiter=v;save();applyEqState();toast("Relance le jeu pour appliquer");});
+    sw($("#sMono"),settings.sound.mono,v=>{settings.sound.mono=v;save();applyEqState();toast("Relance le jeu pour appliquer");});
     $("#sVol").value=settings.sound.vol; $("#sVol").oninput=e=>{settings.sound.vol=+e.target.value;save();setEqGain();applySound();};
     $("#sBoost").value=settings.sound.boost; $("#sBoost").oninput=e=>{settings.sound.boost=+e.target.value;save();setEqGain();};
     seg($("#eqPreset"),null,applyEqPreset); $("#eqReset").onclick=()=>applyEqPreset("flat"); buildEqUI(); }
