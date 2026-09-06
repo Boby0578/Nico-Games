@@ -58,7 +58,6 @@ body.sz-sm #screen{max-width:55%;max-height:55%}
 .side.a{left:0;border-left:none;border-radius:0 16px 16px 0}
 .side.b{right:0;border-right:none;border-radius:16px 0 0 16px}
 .side:active,.side.on{background:var(--neon);color:#052b05;box-shadow:var(--glow)}
-body.started .side{display:none}
 .sheet{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:18px}
 .sheet.open{display:flex}
 .sheet .card{width:100%;max-width:460px;max-height:86vh;overflow:auto;background:#08130a;border:1px solid #1f5a1f;border-radius:16px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
@@ -93,7 +92,7 @@ input[type=file]{display:none}
 <div id="wrap">
   <div id="load">
     <h1>GAME &amp; WATCH</h1>
-    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.<br>Une fois chargé, appuie sur <b>GAME A</b> (colonne de gauche) pour lancer la partie.</p>
+    <p>Charge un fichier <b>.mgw</b> (simulateurs MADrigal). Aucun BIOS nécessaire.<br>Pour démarrer : appuie sur <b>START</b> (colonne de droite) pour afficher les options, <b>SELECT</b> (gauche) pour choisir <b>GAME A</b>, puis <b>START</b> pour valider.</p>
     <button class="btn solid" id="pick">Choisir un fichier .mgw</button>
     <button class="btn" id="pickOpts">&#9881; Options (vidéo &amp; manette)</button>
     <div id="status"></div>
@@ -103,8 +102,8 @@ input[type=file]{display:none}
   <div id="stage" class="hidden">
     <canvas id="screen" width="320" height="240"></canvas>
     <div id="pad">
-      <div class="side a" data-b="start" data-start="1">GAME A</div>
-      <div class="side b" data-b="select" data-start="1">GAME B</div>
+      <div class="side a" data-b="select" data-pulse="1">SELECT</div>
+      <div class="side b" data-b="start" data-pulse="1">START</div>
       <div class="grp dpad">
         <div class="k up" data-b="up">&#9650;</div>
         <div class="k dn" data-b="down">&#9660;</div>
@@ -135,8 +134,7 @@ input[type=file]{display:none}
     <small class="note" style="display:block;margin-top:6px">Touche un bouton « Assigner » puis appuie sur la touche voulue de ta manette. Le clavier et l'écran tactile restent toujours actifs.</small>
 
     <div class="sub">Partie</div>
-    <div class="row"><div class="lab">Démarrer un mode<small>GAME A = normal · GAME B = plus rapide</small></div><div style="display:flex;gap:8px"><button class="btn" id="shGameA">GAME A</button><button class="btn" id="shGameB">GAME B</button></div></div>
-    <div class="row"><div class="lab">Bouton TIME<small>règle l'horloge (rarement utile pour jouer)</small></div><button class="btn" id="shTime">Appuyer</button></div>
+    <div class="row"><div class="lab">Options console<small>SELECT fait défiler (GAME A, GAME B, TIME…), START valide</small></div><div style="display:flex;gap:8px"><button class="btn" id="shSelect">SELECT</button><button class="btn" id="shStart">START</button></div></div>
     <div class="row"><div class="lab">Recommencer la partie</div><button class="btn" id="shReset">Réinitialiser</button></div>
     <div class="row"><div class="lab">Charger un autre jeu</div><button class="btn" id="shLoad">Fichier .mgw</button></div>
   </div>
@@ -158,7 +156,7 @@ function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); 
 
 /* ---------- mappage manette ---------- */
 const ACTIONS=[{id:"up",label:"Haut"},{id:"down",label:"Bas"},{id:"left",label:"Gauche"},{id:"right",label:"Droite"},
-  {id:"a",label:"A"},{id:"b",label:"B"},{id:"start",label:"GAME A"},{id:"select",label:"GAME B"},{id:"x",label:"TIME"}];
+  {id:"a",label:"A"},{id:"b",label:"B"},{id:"start",label:"START (valider)"},{id:"select",label:"SELECT (options)"}];
 const DEFAULT_MAP={up:12,down:13,left:14,right:15,a:0,b:1,start:9,select:8,x:2};
 let mapping=loadMap(), capturing=null;
 function loadMap(){ try{ return Object.assign({},DEFAULT_MAP,JSON.parse(localStorage.getItem("gw_map")||"{}")); }catch(e){ return Object.assign({},DEFAULT_MAP); } }
@@ -198,7 +196,6 @@ async function boot(file){
     });
     load.classList.add("hidden");
     $("#stage").classList.remove("hidden");
-    body.classList.remove("started");
     keepAwake(true);
     toast("Jeu chargé — GAME A pour démarrer");
   }catch(err){
@@ -217,7 +214,11 @@ function press(button,on){ if(!nostalgist) return;
 /* manette tactile */
 function bindKey(el){
   const b=el.dataset.b; if(!b) return;
-  const down=ev=>{ ev.preventDefault(); el.classList.add("on"); press(b,true); if(el.dataset.start) body.classList.add("started"); if(navigator.vibrate) try{navigator.vibrate(8);}catch(e){} };
+  if(el.dataset.pulse){
+    el.addEventListener("pointerdown", ev=>{ ev.preventDefault(); el.classList.add("on"); press(b,true); if(navigator.vibrate) try{navigator.vibrate(10);}catch(e){} setTimeout(()=>{ press(b,false); el.classList.remove("on"); },180); });
+    return;
+  }
+  const down=ev=>{ ev.preventDefault(); el.classList.add("on"); press(b,true); };
   const up=ev=>{ el.classList.remove("on"); press(b,false); };
   el.addEventListener("pointerdown", ev=>{ try{el.setPointerCapture(ev.pointerId);}catch(e){} down(ev); });
   el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); el.addEventListener("lostpointercapture", up);
@@ -252,10 +253,9 @@ $("#swSmooth").onclick = ()=>{ vid.smooth=!vid.smooth; saveVid(); applyVid(); sy
 $("#shFull").onclick = toggleFull;
 $("#shLoad").onclick = ()=>{ closeSheet(); $("#file").click(); };
 function tap(btn){ press(btn,true); setTimeout(()=>press(btn,false),140); }
-$("#shTime").onclick = ()=> tap("x");
-$("#shGameA").onclick = ()=>{ tap("start"); body.classList.add("started"); closeSheet(); toast("GAME A"); };
-$("#shGameB").onclick = ()=>{ tap("select"); body.classList.add("started"); closeSheet(); toast("GAME B"); };
-$("#shReset").onclick = ()=>{ if(nostalgist){ try{ nostalgist.restart(); toast("Partie réinitialisée"); }catch(e){ toast("Réinitialisation indisponible"); } } body.classList.remove("started"); closeSheet(); };
+$("#shSelect").onclick = ()=>{ tap("select"); toast("SELECT"); };
+$("#shStart").onclick = ()=>{ tap("start"); toast("START"); };
+$("#shReset").onclick = ()=>{ if(nostalgist){ try{ nostalgist.restart(); toast("Partie réinitialisée"); }catch(e){ toast("Réinitialisation indisponible"); } } closeSheet(); };
 
 $("#stage").addEventListener("pointerdown", e=>{
   if(body.classList.contains("fs") && e.clientY<40){ body.classList.add("barpeek"); clearTimeout(window._bp); window._bp=setTimeout(()=>body.classList.remove("barpeek"),4500); }
