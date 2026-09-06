@@ -203,6 +203,7 @@ input[type=text],input[type=number],select{background:#04140a;border:1px solid v
 .toast.show{opacity:1}
 .hidden{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.gpfocus{outline:3px solid var(--neon)!important;outline-offset:2px;box-shadow:0 0 0 3px rgba(57,255,20,.30),0 0 16px rgba(57,255,20,.55)!important;border-radius:10px}
 </style>
 </head>
 <body>
@@ -1305,7 +1306,9 @@ function gpBtnOn(b,gp){ if(!b) return false;
 function stickDir(gp,name){ const a=gp.axes; if(!a||a.length<2) return false;
   if(name==="UP") return a[1]<-0.45; if(name==="DOWN") return a[1]>0.45;
   if(name==="LEFT") return a[0]<-0.45; if(name==="RIGHT") return a[0]>0.45; return false; }
+function gpInUI(){ try{ return !$("#home").classList.contains("hidden") || !!document.querySelector(".sheet.open") || editMode; }catch(e){ return false; } }
 function pollGamepad(){
+  if(gpInUI()) return;
   const g=settings.pad.gamepad; if(!g.enabled) return;
   const gp=getActiveGamepad(); if(!gp) return;
   for(const name in GP_BTN){
@@ -1372,6 +1375,59 @@ function updatePadForGamepad(){
 }
 window.addEventListener("gamepadconnected",e=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette détectée — manette tactile masquée"); });
 window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); updatePadForGamepad(); toast("Manette déconnectée"); });
+
+/* ==== Navigation complète de l'interface à la manette physique ==== */
+(function gpNav(){
+  const GP={prev:[],repeatAt:0,focusEls:[],idx:-1,active:false,pu:false,pd:false,pl:false,pr:false};
+  const RB=190;
+  function pads(){ try{ return navigator.getGamepads?navigator.getGamepads():[]; }catch(e){ return []; } }
+  function firstPad(){ const p=pads(); for(let i=0;i<p.length;i++) if(p[i]) return p[i]; return null; }
+  function anySheet(){ return !!document.querySelector(".sheet.open"); }
+  function homeOn(){ const el=$("#home"); return !!el && !el.classList.contains("hidden"); }
+  function inUI(){ return homeOn()||anySheet()||editMode; }
+  function vis(el){ return el && el.offsetParent!==null && getComputedStyle(el).visibility!=="hidden"; }
+  function collect(){
+    const els=[]; ["#btnFull","#btnMenu"].forEach(s=>{ const e=$(s); if(vis(e)) els.push(e); });
+    let scope=document.querySelector(".sheet.open") || (homeOn()?$("#home"):null);
+    if(scope) scope.querySelectorAll(".switch, input[type=range], select, button, .card, [data-close]").forEach(e=>{ if(vis(e)&&!e.disabled) els.push(e); });
+    return els;
+  }
+  function clearF(){ GP.focusEls.forEach(e=>e.classList.remove("gpfocus")); }
+  function setF(i){ clearF(); if(!GP.focusEls.length){GP.idx=-1;return;} GP.idx=(i+GP.focusEls.length)%GP.focusEls.length; const el=GP.focusEls[GP.idx]; el.classList.add("gpfocus"); try{el.scrollIntoView({block:"nearest"});}catch(e){} }
+  function refresh(keep){ const cur=GP.idx>=0?GP.focusEls[GP.idx]:null; GP.focusEls=collect(); let ni=0; if(keep&&cur){ const p=GP.focusEls.indexOf(cur); if(p>=0)ni=p; } setF(ni); }
+  function activate(){ const el=GP.focusEls[GP.idx]; if(!el)return;
+    if(el.tagName==="SELECT"){ el.selectedIndex=(el.selectedIndex+1)%el.options.length; el.dispatchEvent(new Event("change")); return; }
+    if(el.tagName==="INPUT"&&el.type==="range") return;
+    el.click(); setTimeout(()=>refresh(false),70); }
+  function adjust(dir){ const el=GP.focusEls[GP.idx]; if(!el)return false;
+    if(el.tagName==="INPUT"&&el.type==="range"){ const span=(+el.max)-(+el.min); const step=Math.max(1,Math.round(span/20)); el.value=Math.max(+el.min,Math.min(+el.max,(+el.value)+dir*step)); el.dispatchEvent(new Event("input")); return true; }
+    if(el.tagName==="SELECT"){ el.selectedIndex=Math.max(0,Math.min(el.options.length-1,el.selectedIndex+dir)); el.dispatchEvent(new Event("change")); return true; }
+    return false; }
+  function back(){ if(editMode)return; if(anySheet()){ closeSheet(); setTimeout(()=>refresh(false),70); return; } if(homeOn()&&nes){ hideHome(); } }
+  function openMenu(){ showHome(); setTimeout(()=>refresh(false),90); }
+  function edge(b,i){ return b[i] && !GP.prev[i]; }
+  function loop(){ requestAnimationFrame(loop);
+    const gp=firstPad(); if(!gp){ if(GP.active){GP.active=false;clearF();} return; }
+    const b=gp.buttons.map(x=>x&&x.pressed), ax=gp.axes||[], now=performance.now();
+    if(inUI()){
+      if(!GP.active){ GP.active=true; refresh(false); }
+      const up=b[12]||ax[1]<-0.5, dn=b[13]||ax[1]>0.5, lf=b[14]||ax[0]<-0.5, rt=b[15]||ax[0]>0.5;
+      const dirNow=up||dn||lf||rt, dirEdge=(up&&!GP.pu)||(dn&&!GP.pd)||(lf&&!GP.pl)||(rt&&!GP.pr);
+      if(dirNow&&(dirEdge||now>GP.repeatAt)){ GP.repeatAt=now+(dirEdge?RB*1.6:RB);
+        if(up)setF(GP.idx-1); else if(dn)setF(GP.idx+1);
+        else if(lf){ if(!adjust(-1))setF(GP.idx-1); } else if(rt){ if(!adjust(1))setF(GP.idx+1); } }
+      GP.pu=up;GP.pd=dn;GP.pl=lf;GP.pr=rt;
+      if(edge(b,0))activate(); if(edge(b,1))back();
+    } else {
+      if(GP.active){ GP.active=false; clearF(); }
+      GP.pu=GP.pd=GP.pl=GP.pr=false;
+      const guide=b[16], combo=b[8]&&b[9];
+      if((guide&&!GP.prev[16])||(combo&&!(GP.prev[8]&&GP.prev[9]))) openMenu();
+    }
+    GP.prev=b;
+  }
+  requestAnimationFrame(loop);
+})();
 
 /* --- État & système : accueil / pause / reset / vitesse / sauvegardes / capture / veille --- */
 function refreshResumeBtn(){ const r=$("#btnResume"); if(r) r.classList.toggle("hidden", !currentName); }

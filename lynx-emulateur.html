@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#050805">
-<title>Game Boy Advance · Émulateur</title>
+<title>Atari Lynx · Émulateur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" crossorigin="anonymous">
@@ -127,7 +127,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 <body>
   <div id="topbar">
     <a class="ic" href="index.html" title="Consoles">↩</a>
-    <div class="brand"><b id="short">GBA</b> · Émulateur</div>
+    <div class="brand"><b id="short">LYNX</b> · Émulateur</div>
     <div class="sp"></div>
     <button class="ic" id="btnFull" title="Plein écran">⛶</button>
     <button class="ic" id="btnMenu" title="Menu">☰</button>
@@ -144,7 +144,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
 
     <div id="home">
-      <div class="logo" id="sysName">GAME BOY ADVANCE<small>émulateur</small></div>
+      <div class="logo" id="sysName">ATARI LYNX<small>émulateur</small></div>
       <div class="menu">
         <button class="mbtn primary hidden" id="btnResume" data-act="resume"><span class="k">▶</span><span class="d">Reprendre le jeu<small>continuer la partie</small></span></button>
         <button class="mbtn primary" data-act="pick"><span class="k">1</span><span class="d">Choisir un jeu<small id="acceptHint">fichier .gb ou .gbc</small></span></button>
@@ -266,7 +266,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   </div></div>
 
   <div class="toast" id="toast"></div>
-  <input type="file" id="file" accept=".gba,.zip" class="hidden" multiple>
+  <input type="file" id="file" accept=".lnx,.zip" class="hidden" multiple>
   <input type="file" id="biosfile" accept=".bin,.BIN,.zip" class="hidden">
 
 <script>
@@ -277,8 +277,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
   /* ==== Console (Game Boy) : liste des boutons + indices RetroPad ==== */
   const NETPLAY=""; // URL d'un serveur de netplay EmulatorJS (vide = hors ligne)
-  const SYS={core:"gba", name:"GAME BOY ADVANCE", short:"GBA", accept:".gba,.zip", hint:"fichier .gba",
-    buttons:[{id:"B",label:"B",retro:0},{id:"A",label:"A",retro:8},{id:"L",label:"L",retro:10,pill:1},{id:"R",label:"R",retro:11,pill:1},{id:"SELECT",label:"SELECT",retro:2,pill:1},{id:"START",label:"START",retro:3,pill:1}]};
+  const SYS={core:"lynx", name:"ATARI LYNX", short:"LYNX", accept:".lnx,.zip", hint:"fichier .lnx",
+    buttons:[{id:"B",label:"B",retro:0},{id:"A",label:"A",retro:8},{id:"L",label:"OPT1",retro:10,pill:1},{id:"R",label:"OPT2",retro:11,pill:1},{id:"START",label:"PAUSE",retro:3,pill:1}]};
   $("#short").textContent=SYS.short; $("#sysName").innerHTML=SYS.name+"<small>émulateur</small>";
   $("#file").setAttribute("accept",SYS.accept); $("#acceptHint").textContent=SYS.hint; document.title=SYS.name+" · Émulateur";
 

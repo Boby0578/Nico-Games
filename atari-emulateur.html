@@ -120,6 +120,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;background:var(--panel);border:1px solid var(--line-strong);color:var(--neon-soft);padding:10px 16px;border-radius:12px;box-shadow:var(--glow);opacity:0;transition:.25s;pointer-events:none;font-weight:600;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.gpfocus{outline:3px solid var(--neon)!important;outline-offset:2px;box-shadow:0 0 0 3px rgba(57,255,20,.30),0 0 16px rgba(57,255,20,.55)!important;border-radius:10px}
 </style>
 <style id="vidStyle"></style>
 </head>
@@ -170,6 +171,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="row"><div class="lab">Luminosité</div><input type="range" id="vBright" min="60" max="150" value="100"></div>
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
+    <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; réduit les grésillements sur les cœurs lourds</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -286,7 +288,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     C:{x:92,y:64,size:82},Z:{x:82,y:54,size:78},MODE:{x:40,y:94,size:66},
     CROSS:{x:83,y:83,size:80},CIRCLE:{x:92,y:73,size:80},SQUARE:{x:74,y:73,size:80},TRIANGLE:{x:83,y:63,size:80},
     L1:{x:16,y:34,size:76},R1:{x:88,y:34,size:76},L2:{x:16,y:20,size:72},R2:{x:88,y:20,size:72},
-    FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66}};
+    FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66},D:{x:72,y:64,size:82}};
   function defLayout(){ const L={dpad:{...DEF_POS.dpad}}; SYS.buttons.forEach(b=>{ L[b.id]={...(DEF_POS[b.id]||{x:50,y:60,size:80})}; }); return L; }
 
   const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false,fill:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
@@ -299,6 +301,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   if(settings.sound.boost==null) settings.sound.boost=100;
   if(settings.video.color==null) settings.video.color=false;
   if(settings.video.fill==null) settings.video.fill=false;
+  if(settings.video.frameskip==null) settings.video.frameskip = ["snes","gba","segaMD","pce","arcade"].indexOf(SYS.core)>=0 ? 1 : 0;
   if(settings.touch.vibro==null) settings.touch.vibro=true;
   if(settings.sound.eqon==null) settings.sound.eqon=false;
   if(!settings._audiofix){ settings.sound.eqon=false; settings._audiofix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
@@ -455,6 +458,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function screenshot(){ try{ const cv=document.querySelector("#game canvas"); if(!cv){toast("Lance un jeu");return;} const a=document.createElement("a"); a.href=cv.toDataURL("image/png"); a.download=(currentName||SYS.core).replace(/\.[^.]+$/,"")+"_"+Date.now()+".png"; a.click(); toast("Capture enregistrée"); }catch(e){ toast("Capture indisponible"); } }
   let wakeLock=null, wakeOn=false;
   async function setWake(on){ wakeOn=on; try{ if(on&&"wakeLock" in navigator){ if(!wakeLock) wakeLock=await navigator.wakeLock.request("screen"); } else if(wakeLock){ await wakeLock.release(); wakeLock=null; } }catch(e){} }
+  function fskipOptions(core,n){ n=+n||0;
+    if(core==="gba") return {mgba_frameskip:String(Math.min(n,10))};
+    if(core==="segaMD") return n>0?{genesis_plus_gx_frameskip:"manual",genesis_plus_gx_frameskip_manual_interval:String(Math.min(n,10))}:{genesis_plus_gx_frameskip:"disabled"};
+    if(core==="snes") return {snes9x_frameskip:String(Math.min(n,9))};
+    if(core==="pce") return {pce_frameskip:String(Math.min(n,9))};
+    return {};
+  }
+  function applyFskipLive(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(!gm||!gm.setVariable) return; const o=fskipOptions(SYS.core, settings.video.frameskip||0); Object.keys(o).forEach(k=>gm.setVariable(k,o[k])); }catch(e){} }
   function applyColorLive(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(gm&&gm.setVariable) gm.setVariable("gambatte_gb_colorization", settings.video.color?"GBC":"disabled"); }catch(e){} }
   /* Codes (Game Genie / GameShark) via le système de triche d'EmulatorJS */
   const codes=[];
@@ -479,10 +490,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     const url=URL.createObjectURL(new Blob([ab]));
     window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
-    if(self.crossOriginIsolated && ["snes","gba","segaMD","pce"].indexOf(SYS.core)>=0) window.EJS_threads=true;
+    if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade"].indexOf(SYS.core)>=0) window.EJS_threads=true;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
-    if(SYS.core==="gb") window.EJS_defaultOptions={gambatte_gb_colorization: settings.video.color?"GBC":"disabled"};
-    if(SYS.core==="psx") window.EJS_defaultOptions={"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"disabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"};
+    let _opts={};
+    if(SYS.core==="gb") _opts.gambatte_gb_colorization = settings.video.color?"GBC":"disabled";
+    if(SYS.core==="psx") Object.assign(_opts,{"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"disabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"});
+    Object.assign(_opts, fskipOptions(SYS.core, settings.video.frameskip||0));
+    if(Object.keys(_opts).length) window.EJS_defaultOptions=_opts;
     if(NETPLAY){ window.EJS_netplay=true; window.EJS_netplayServer=NETPLAY; }
     if(SYS.bios){ let biosUrl=null;
       try{ if(window.PS1_BIOS_B64){ const bin=atob(window.PS1_BIOS_B64); const u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i); biosUrl=URL.createObjectURL(new Blob([u8])); } }catch(e){}
@@ -554,7 +568,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
-    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
+    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const HEAVY=["snes","gba","segaMD","pce","arcade"]; const rf=$("#rowFskip"); if(HEAVY.indexOf(SYS.core)>=0){ const s=$("#vFskip"); s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } else if(rf) rf.style.display="none"; } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
   function syncSound(){ sw($("#sEqOn"),settings.sound.eqon,v=>{settings.sound.eqon=v;save();applyEqState();});
     $("#sVol").value=settings.sound.vol; $("#sVol").oninput=e=>{settings.sound.vol=+e.target.value;save();setEqGain();applySound();};
     $("#sBoost").value=settings.sound.boost; $("#sBoost").oninput=e=>{settings.sound.boost=+e.target.value;save();setEqGain();};
@@ -570,7 +584,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     $("#pkThreads").innerHTML = "Anti-grésillement : monte la <b>Fluidité</b> si besoin. La PS1 est très lourde pour un navigateur : les jeux 2D passent bien ; les gros jeux 3D peuvent garder un léger grésillement (limite du navigateur, pas un réglage).";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
   function syncSystem(){
-    const heavy=["snes","gba","segaMD","pce"].indexOf(SYS.core)>=0;
+    const heavy=["snes","gba","segaMD","pce","arcade"].indexOf(SYS.core)>=0;
     const st=$("#sysThreads");
     if(!heavy) st.style.display="none";
     else st.innerHTML = self.crossOriginIsolated
@@ -589,6 +603,60 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     if(gp){ let n=(gp.id||"manette").replace(/\(.*?\)/g,"").trim()||"manette"; el.innerHTML='Manette détectée : <b class="neon">'+n.slice(0,42)+'</b>'; } else el.textContent="Aucune manette détectée — connecte-la puis appuie sur un bouton."; }
   window.addEventListener("gamepadconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette détectée — manette tactile masquée"); });
   window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette déconnectée"); });
+
+  /* ==== Navigation complète de l'interface à la manette physique ==== */
+  (function gpNav(){
+    const GP={prev:[],repeatAt:0,focusEls:[],idx:-1,active:false,pu:false,pd:false,pl:false,pr:false};
+    const RB=190;
+    function pads(){ try{ return navigator.getGamepads?navigator.getGamepads():[]; }catch(e){ return []; } }
+    function firstPad(){ const p=pads(); for(let i=0;i<p.length;i++) if(p[i]) return p[i]; return null; }
+    function anySheet(){ return !!document.querySelector(".sheet.open"); }
+    function homeOn(){ const el=$("#home"); return !!el && getComputedStyle(el).display!=="none"; }
+    function inUI(){ return homeOn()||anySheet()||editMode; }
+    function pauseGame(p){ try{ const em=window.EJS_emulator; if(!em)return; if(p){ if(typeof em.pause==="function")em.pause(); } else if(typeof em.play==="function")em.play(); }catch(e){} }
+    function vis(el){ return el && el.offsetParent!==null && getComputedStyle(el).visibility!=="hidden"; }
+    function collect(){
+      const els=[]; ["#btnFull","#btnMenu"].forEach(s=>{ const e=$(s); if(vis(e)) els.push(e); });
+      let scope=document.querySelector(".sheet.open .card") || (homeOn()?$("#home"):null);
+      if(scope) scope.querySelectorAll(".switch, input[type=range], select, button, .card, [data-close]").forEach(e=>{ if(vis(e)&&!e.disabled) els.push(e); });
+      return els;
+    }
+    function clearF(){ GP.focusEls.forEach(e=>e.classList.remove("gpfocus")); }
+    function setF(i){ clearF(); if(!GP.focusEls.length){GP.idx=-1;return;} GP.idx=(i+GP.focusEls.length)%GP.focusEls.length; const el=GP.focusEls[GP.idx]; el.classList.add("gpfocus"); try{el.scrollIntoView({block:"nearest"});}catch(e){} }
+    function refresh(keep){ const cur=GP.idx>=0?GP.focusEls[GP.idx]:null; GP.focusEls=collect(); let ni=0; if(keep&&cur){ const p=GP.focusEls.indexOf(cur); if(p>=0)ni=p; } setF(ni); }
+    function activate(){ const el=GP.focusEls[GP.idx]; if(!el)return;
+      if(el.tagName==="SELECT"){ el.selectedIndex=(el.selectedIndex+1)%el.options.length; el.dispatchEvent(new Event("change")); return; }
+      if(el.tagName==="INPUT"&&el.type==="range") return;
+      el.click(); setTimeout(()=>refresh(false),70); }
+    function adjust(dir){ const el=GP.focusEls[GP.idx]; if(!el)return false;
+      if(el.tagName==="INPUT"&&el.type==="range"){ const span=(+el.max)-(+el.min); const step=Math.max(1,Math.round(span/20)); el.value=Math.max(+el.min,Math.min(+el.max,(+el.value)+dir*step)); el.dispatchEvent(new Event("input")); return true; }
+      if(el.tagName==="SELECT"){ el.selectedIndex=Math.max(0,Math.min(el.options.length-1,el.selectedIndex+dir)); el.dispatchEvent(new Event("change")); return true; }
+      return false; }
+    function back(){ if(editMode)return; if(anySheet()){ closeSheet(); setTimeout(()=>refresh(false),70); return; } if(homeOn()&&running){ hideHome(); } }
+    function openMenu(){ document.body.classList.add("barpeek"); showHome(); setTimeout(()=>refresh(false),90); }
+    function edge(b,i){ return b[i] && !GP.prev[i]; }
+    function loop(){ requestAnimationFrame(loop);
+      const gp=firstPad(); if(!gp){ if(GP.active){GP.active=false;clearF();} return; }
+      const b=gp.buttons.map(x=>x&&x.pressed), ax=gp.axes||[], now=performance.now();
+      if(inUI()){
+        if(!GP.active){ GP.active=true; pauseGame(true); document.body.classList.add("barpeek"); refresh(false); }
+        const up=b[12]||ax[1]<-0.5, dn=b[13]||ax[1]>0.5, lf=b[14]||ax[0]<-0.5, rt=b[15]||ax[0]>0.5;
+        const dirNow=up||dn||lf||rt, dirEdge=(up&&!GP.pu)||(dn&&!GP.pd)||(lf&&!GP.pl)||(rt&&!GP.pr);
+        if(dirNow&&(dirEdge||now>GP.repeatAt)){ GP.repeatAt=now+(dirEdge?RB*1.6:RB);
+          if(up)setF(GP.idx-1); else if(dn)setF(GP.idx+1);
+          else if(lf){ if(!adjust(-1))setF(GP.idx-1); } else if(rt){ if(!adjust(1))setF(GP.idx+1); } }
+        GP.pu=up;GP.pd=dn;GP.pl=lf;GP.pr=rt;
+        if(edge(b,0))activate(); if(edge(b,1))back();
+      } else {
+        if(GP.active){ GP.active=false; clearF(); pauseGame(false); }
+        GP.pu=GP.pd=GP.pl=GP.pr=false;
+        const guide=b[16], combo=b[8]&&b[9];
+        if((guide&&!GP.prev[16])||(combo&&!(GP.prev[8]&&GP.prev[9]))) openMenu();
+      }
+      GP.prev=b;
+    }
+    requestAnimationFrame(loop);
+  })();
 
   /* ==== Chercheur de mémoire : scan de tout l'espace mémoire du module WebAssembly ==== */
   function getModule(){
