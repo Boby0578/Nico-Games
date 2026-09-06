@@ -174,7 +174,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Luminosité</div><input type="range" id="vBright" min="60" max="150" value="100"></div>
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
-    <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; réduit les grésillements sur les cœurs lourds</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -207,7 +207,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <h2><span class="neon">Manette physique</span><button class="close" data-close>✕</button></h2>
     <div class="chip" id="gpStatus" style="display:block;margin-bottom:12px">Recherche d'une manette…</div>
     <div class="row"><div class="lab">Masquer la manette tactile si une manette est détectée</div><div class="switch on" id="gAuto"><b></b></div></div>
-    <p class="hint">Le remappage des boutons de la manette physique se fait dans le menu ⚙ pendant le jeu.</p>
+    <div class="row"><div class="lab">Manette personnalisée<small>remapper chaque bouton (sinon détection automatique)</small></div><div class="switch" id="gCustom"><b></b></div></div>
+    <div id="gpMapWrap" style="display:none">
+      <div id="gpMapList"></div>
+      <div class="row"><div class="lab">Réinitialiser le mappage</div><button id="gpMapReset" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 12px;font:inherit;font-weight:700">Par défaut</button></div>
+      <p class="hint">Touche « Assigner » en face d'une action puis appuie sur le bouton voulu de ta manette. Désactivé par défaut : la détection automatique convient à la plupart des manettes.</p>
+    </div>
   </div></div>
 
   <div class="sheet" id="sh-mem"><div class="card">
@@ -291,11 +296,11 @@ input,textarea{-webkit-user-select:text;user-select:text}
     C:{x:92,y:64,size:82},Z:{x:82,y:54,size:78},MODE:{x:40,y:94,size:66},
     CROSS:{x:83,y:83,size:80},CIRCLE:{x:92,y:73,size:80},SQUARE:{x:74,y:73,size:80},TRIANGLE:{x:83,y:63,size:80},
     L1:{x:16,y:34,size:76},R1:{x:88,y:34,size:76},L2:{x:16,y:20,size:72},R2:{x:88,y:20,size:72},
-    FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66},D:{x:72,y:64,size:82}};
+    FIRE:{x:87,y:76,size:100},RESET:{x:60,y:94,size:66},D:{x:72,y:64,size:82},F1:{x:57,y:72,size:88},F2:{x:66,y:57,size:88},KP1:{x:74,y:34,size:54},KP2:{x:82,y:34,size:54},KP3:{x:90,y:34,size:54},KP4:{x:74,y:49,size:54},KP5:{x:82,y:49,size:54},KP6:{x:90,y:49,size:54},KP7:{x:74,y:64,size:54},KP8:{x:82,y:64,size:54},STAR:{x:90,y:64,size:54},HASH:{x:82,y:79,size:54},Z:{x:50,y:90,size:66},CU:{x:88,y:39,size:54},CD:{x:88,y:59,size:54},CL:{x:82,y:49,size:54},CR:{x:94,y:49,size:54}};
   function defLayout(){ const L={dpad:{...DEF_POS.dpad}}; SYS.buttons.forEach(b=>{ L[b.id]={...(DEF_POS[b.id]||{x:50,y:60,size:80})}; }); return L; }
 
   const settings=load("emu_"+SYS.core,{video:{smooth:false,crt:false,bright:100,sat:100,color:false,fill:false},sound:{vol:70,boost:100,eq:[0,0,0,0,0,0,0,0,0,0],eqon:false}, psx:{frameskip:2,interp:"simple"},
-    touch:{show:true,opacity:85,type:"dpad",vibro:true},gamepad:{autohide:true},layout:defLayout()});
+    touch:{show:true,opacity:85,type:"dpad",vibro:true},gamepad:{autohide:true,custom:false,map:{}},layout:defLayout()});
   // complète la disposition si des boutons manquent
   if(!settings.layout) settings.layout=defLayout();
   if(!settings.layout.dpad) settings.layout.dpad={...DEF_POS.dpad};
@@ -306,6 +311,11 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(settings.video.fill==null) settings.video.fill=false;
   if(settings.video.frameskip==null) settings.video.frameskip = ["snes","gba","segaMD","pce","arcade"].indexOf(SYS.core)>=0 ? 1 : 0;
   if(settings.touch.vibro==null) settings.touch.vibro=true;
+  if(settings.gamepad.custom==null) settings.gamepad.custom=false;
+  if(!settings.gamepad.map || typeof settings.gamepad.map!=="object") settings.gamepad.map={};
+  (function(){ const DEF={4:12,5:13,6:14,7:15,0:0,8:1,1:2,9:3,10:4,11:5,12:6,13:7,2:8,3:9,14:10,15:11};
+    const ids=[4,5,6,7].concat(SYS.buttons.map(function(b){return b.retro;}));
+    ids.forEach(function(r){ if(settings.gamepad.map[r]==null && DEF[r]!=null) settings.gamepad.map[r]=DEF[r]; }); })();
   if(settings.sound.eqon==null) settings.sound.eqon=false;
   if(!settings._audiofix){ settings.sound.eqon=false; settings._audiofix=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   if(!settings.psx) settings.psx={frameskip:2,interp:"simple"};
@@ -364,7 +374,9 @@ input,textarea{-webkit-user-select:text;user-select:text}
   function press(r){ held.add(r); simInput(r,1); keyEv(r,true); }
   function release(r){ held.delete(r); simInput(r,0); keyEv(r,false); }
   // ré-affirme les appuis maintenus à chaque image (fiabilise joystick + boutons sur tous les cœurs)
-  (function inputLoop(){ requestAnimationFrame(inputLoop); if(held.size){ held.forEach(r=>simInput(r,1)); } })();
+  (function inputLoop(){ requestAnimationFrame(inputLoop);
+    if(settings.gamepad.custom && running && !gpUI() && gpCapturing===null){ const gp=realFirstPad(); if(gp){ const b=gp.buttons, ax=gp.axes||[], map=settings.gamepad.map; for(const r in map){ const idx=map[r]; let on=!!(b[idx]&&b[idx].pressed); if(r==="4") on=on||ax[1]<-0.5; else if(r==="5") on=on||ax[1]>0.5; else if(r==="6") on=on||ax[0]<-0.5; else if(r==="7") on=on||ax[0]>0.5; simInput(+r,on?1:0); } } }
+    if(held.size){ held.forEach(r=>simInput(r,1)); } })();
 
   /* ==== Manette tactile (nos boutons) ==== */
   function applyPad(){
@@ -493,7 +505,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
     const url=URL.createObjectURL(new Blob([ab]));
     window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
-    if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds"].indexOf(SYS.core)>=0) window.EJS_threads=true;
+    if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds","n64"].indexOf(SYS.core)>=0) window.EJS_threads=true;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
     let _opts={};
     if(SYS.core==="gb") _opts.gambatte_gb_colorization = settings.video.color?"GBC":"disabled";
@@ -571,7 +583,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
-    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const HEAVY=["snes","gba","segaMD","pce","arcade"]; const rf=$("#rowFskip"); if(HEAVY.indexOf(SYS.core)>=0){ const s=$("#vFskip"); s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } else if(rf) rf.style.display="none"; } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
+    $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const s=$("#vFskip"); if(s){ s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
   function syncSound(){ sw($("#sEqOn"),settings.sound.eqon,v=>{settings.sound.eqon=v;save();applyEqState();});
     $("#sVol").value=settings.sound.vol; $("#sVol").oninput=e=>{settings.sound.vol=+e.target.value;save();setEqGain();applySound();};
     $("#sBoost").value=settings.sound.boost; $("#sBoost").oninput=e=>{settings.sound.boost=+e.target.value;save();setEqGain();};
@@ -581,13 +593,17 @@ input,textarea{-webkit-user-select:text;user-select:text}
     $("#tOpacity").value=settings.touch.opacity; $("#tOpacity").oninput=e=>{settings.touch.opacity=+e.target.value;save();applyPad();};
     sw($("#tVibro"),settings.touch.vibro,v=>{settings.touch.vibro=v;save();});
     $("#tEdit").onclick=enterEdit; }
-  function syncGamepad(){ updateGpStatus(); sw($("#gAuto"),settings.gamepad.autohide,v=>{settings.gamepad.autohide=v;save();applyPad();}); }
+  function syncGamepad(){ updateGpStatus(); sw($("#gAuto"),settings.gamepad.autohide,v=>{settings.gamepad.autohide=v;save();applyPad();});
+    const wrap=$("#gpMapWrap"); if(wrap) wrap.style.display=settings.gamepad.custom?"block":"none";
+    sw($("#gCustom"),settings.gamepad.custom,v=>{ settings.gamepad.custom=v; save(); applyGpMode(); if(wrap) wrap.style.display=v?"block":"none"; if(v) buildGpMap(); toast(v?"Manette personnalisée activée":"Détection automatique"); });
+    if(settings.gamepad.custom) buildGpMap();
+    const rb=$("#gpMapReset"); if(rb) rb.onclick=function(){ settings.gamepad.map={}; GP_ACTIONS.forEach(function(a){ if(GP_DEF[a.retro]!=null) settings.gamepad.map[a.retro]=GP_DEF[a.retro]; }); save(); buildGpMap(); toast("Mappage réinitialisé"); }; }
   function applyPsx(){ try{ const gm=window.EJS_emulator&&window.EJS_emulator.gameManager; if(gm&&gm.setVariable){ gm.setVariable("pcsx_rearmed_frameskip",String(settings.psx.frameskip)); gm.setVariable("pcsx_rearmed_spu_interpolation",settings.psx.interp); } }catch(e){} }
   function syncPerf(){
     $("#pkThreads").innerHTML = "Anti-grésillement : monte la <b>Fluidité</b> si besoin. La PS1 est très lourde pour un navigateur : les jeux 2D passent bien ; les gros jeux 3D peuvent garder un léger grésillement (limite du navigateur, pas un réglage).";
     seg($("#pkSkip"),String(settings.psx.frameskip),v=>{settings.psx.frameskip=+v;save();applyPsx();toast("Relance le jeu pour appliquer");}); seg($("#pkInterp"),settings.psx.interp,v=>{settings.psx.interp=v;save();applyPsx();toast("Relance le jeu pour appliquer");}); }
   function syncSystem(){
-    const heavy=["snes","gba","segaMD","pce","arcade","nds"].indexOf(SYS.core)>=0;
+    const heavy=["snes","gba","segaMD","pce","arcade","nds","n64"].indexOf(SYS.core)>=0;
     const st=$("#sysThreads");
     if(!heavy) st.style.display="none";
     else st.innerHTML = self.crossOriginIsolated
@@ -601,9 +617,19 @@ input,textarea{-webkit-user-select:text;user-select:text}
     $$("[data-load]",box).forEach(b=>b.onclick=()=>loadState(+b.dataset.load)); }
 
   /* ==== Manette physique ==== */
-  function gamepadPresent(){ try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]) return true; }catch(e){} return false; }
-  function updateGpStatus(){ const el=$("#gpStatus"); if(!el) return; let gp=null; try{ const p=navigator.getGamepads?navigator.getGamepads():[]; for(let i=0;i<p.length;i++) if(p[i]){gp=p[i];break;} }catch(e){}
+  const _rgp = (navigator.getGamepads ? navigator.getGamepads.bind(navigator) : function(){return [];});
+  function realPads(){ try{ return _rgp()||[]; }catch(e){ return []; } }
+  function realFirstPad(){ const p=realPads(); for(let i=0;i<p.length;i++) if(p[i]) return p[i]; return null; }
+  function applyGpMode(){ try{ navigator.getGamepads = settings.gamepad.custom ? function(){return [];} : _rgp; }catch(e){} }
+  function gpUI(){ try{ const hm=$("#home"); if(hm && getComputedStyle(hm).display!=="none") return true; }catch(e){} return editMode || !!document.querySelector(".sheet.open"); }
+  let gpCapturing=null, capPrev=[];
+  const GP_ACTIONS=[{retro:4,label:"Haut"},{retro:5,label:"Bas"},{retro:6,label:"Gauche"},{retro:7,label:"Droite"}].concat(SYS.buttons.map(function(b){return {retro:b.retro,label:b.label};}));
+  const GP_DEF={4:12,5:13,6:14,7:15,0:0,8:1,1:2,9:3,10:4,11:5,12:6,13:7,2:8,3:9,14:10,15:11};
+  function buildGpMap(){ const box=$("#gpMapList"); if(!box) return; box.innerHTML=""; GP_ACTIONS.forEach(function(a){ const row=document.createElement("div"); row.className="row"; const cur=settings.gamepad.map[a.retro]; row.innerHTML='<div class="lab">'+a.label+'</div><button data-r="'+a.retro+'" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 12px;font:inherit;font-weight:700;min-width:98px">'+(cur==null?"—":"Bouton "+cur)+'</button>'; box.appendChild(row); }); box.querySelectorAll("button[data-r]").forEach(function(btn){ btn.onclick=function(){ gpCapturing=+btn.dataset.r; buildGpMap(); btn.textContent="Appuie…"; btn.style.background="#ffb62e"; btn.style.color="#2b1c00"; toast("Appuie sur un bouton de la manette"); }; }); }
+  function gamepadPresent(){ const p=realPads(); for(let i=0;i<p.length;i++) if(p[i]) return true; return false; }
+  function updateGpStatus(){ const el=$("#gpStatus"); if(!el) return; let gp=null; try{ const p=realPads(); for(let i=0;i<p.length;i++) if(p[i]){gp=p[i];break;} }catch(e){}
     if(gp){ let n=(gp.id||"manette").replace(/\(.*?\)/g,"").trim()||"manette"; el.innerHTML='Manette détectée : <b class="neon">'+n.slice(0,42)+'</b>'; } else el.textContent="Aucune manette détectée — connecte-la puis appuie sur un bouton."; }
+  applyGpMode();
   document.addEventListener("contextmenu",e=>e.preventDefault());
     window.addEventListener("gamepadconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette détectée — manette tactile masquée"); });
   window.addEventListener("gamepaddisconnected",()=>{ updateGpStatus(); applyPad(); toast("Manette déconnectée"); });
@@ -612,7 +638,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
   (function gpNav(){
     const GP={prev:[],repeatAt:0,focusEls:[],idx:-1,active:false,pu:false,pd:false,pl:false,pr:false};
     const RB=190;
-    function pads(){ try{ return navigator.getGamepads?navigator.getGamepads():[]; }catch(e){ return []; } }
+    function pads(){ return realPads(); }
     function firstPad(){ const p=pads(); for(let i=0;i<p.length;i++) if(p[i]) return p[i]; return null; }
     function anySheet(){ return !!document.querySelector(".sheet.open"); }
     function homeOn(){ const el=$("#home"); return !!el && getComputedStyle(el).display!=="none"; }
@@ -640,6 +666,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
     function openMenu(){ document.body.classList.add("barpeek"); showHome(); setTimeout(()=>refresh(false),90); }
     function edge(b,i){ return b[i] && !GP.prev[i]; }
     function loop(){ requestAnimationFrame(loop);
+      if(gpCapturing!==null){ const cp=firstPad(); if(cp){ const bb=cp.buttons.map(x=>x&&x.pressed); for(let i=0;i<bb.length;i++){ if(bb[i]&&!capPrev[i]){ settings.gamepad.map[gpCapturing]=i; save(); gpCapturing=null; buildGpMap(); toast("Assigné : bouton "+i); break; } } capPrev=bb; } return; }
       const gp=firstPad(); if(!gp){ if(GP.active){GP.active=false;clearF();} return; }
       const b=gp.buttons.map(x=>x&&x.pressed), ax=gp.axes||[], now=performance.now();
       if(inUI()){
