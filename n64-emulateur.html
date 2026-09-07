@@ -174,8 +174,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-    <div class="row"><div class="lab">Cœur N64<small>essaie les deux — Parallel est souvent plus fluide (relance le jeu)</small></div><select id="n64core" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="mupen64plus_next">Mupen64Plus (défaut)</option><option value="parallel-n64">Parallel N64</option></select></div>
-    <div class="row"><div class="lab">Qualité N64<small>Performance = résolution native, moins de grésillement</small></div><select id="n64perf" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="perf">Performance (native)</option><option value="balanced">Équilibré (×2)</option></select></div>
+    <div class="row"><div class="lab">Cœur N64<small>essaie les deux (relance le jeu)</small></div><select id="n64core" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="mupen64plus_next">Mupen64Plus (défaut)</option><option value="parallel_n64">Parallel N64</option></select></div>
+    <div class="row"><div class="lab">Résolution<small>native = plus fluide</small></div><select id="n64res" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="native">Native (320×240)</option><option value="x2">×2 (640×480)</option><option value="x3">×3 (960×720)</option></select></div>
+    <div class="row"><div class="lab">Processeur (CPU)<small>Recompilateur = le plus rapide (repli auto si indisponible)</small></div><select id="n64cpu" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="dynamic_recompiler">Recompilateur</option><option value="cached_interpreter">Interpréteur (cache)</option><option value="pure_interpreter">Interpréteur pur</option></select></div>
+    <div class="row"><div class="lab">RSP<small>HLE = rapide · LLE = précis</small></div><select id="n64rsp" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="hle">HLE (rapide)</option><option value="cxd4">LLE (précis)</option></select></div>
+    <div class="row"><div class="lab">Émulation framebuffer<small>désactive pour gagner en vitesse (peut casser certains effets)</small></div><div class="switch" id="n64fb"><b></b></div></div>
+    <div class="row"><div class="lab">Filtrage bilinéaire<small>lisse les textures</small></div><div class="switch" id="n64bil"><b></b></div></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -328,9 +332,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
-  const N64=(function(){ let d={core:"mupen64plus_next",perf:"perf"}; try{ return Object.assign(d, JSON.parse(localStorage.getItem("nico_n64")||"{}")); }catch(e){ return d; } })();
+  const N64=(function(){ const d={core:"mupen64plus_next",res:"native",cpu:"dynamic_recompiler",rsp:"hle",fb:true,bilinear:true}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_n64")||"{}"); }catch(e){} const o=Object.assign(d,s); if(o.core==="parallel-n64"||o.core==="parallel") o.core="parallel_n64"; if(o.perf){ o.res=(o.perf==="perf"?"native":"x2"); delete o.perf; } return o; })();
   function saveN64(){ try{ localStorage.setItem("nico_n64", JSON.stringify(N64)); }catch(e){} }
-  function n64Options(){ if(N64.core==="parallel-n64"){ return {"parallel-n64-screensize":(N64.perf==="perf"?"320x240":"640x480")}; } const res=N64.perf==="perf"?"320x240":"640x480"; return {"mupen64plus-rsp-plugin":"hle","mupen64plus-43screensize":res,"mupen64plus-169screensize":(N64.perf==="perf"?"640x360":"960x540")}; }
+  function n64Res(){ if(N64.res==="x3") return ["960x720","1440x810","960x720"]; if(N64.res==="x2") return ["640x480","960x540","640x480"]; return ["320x240","640x360","320x240"]; }
+  function n64Options(){ const r=n64Res();
+    if(N64.core==="parallel_n64") return {"parallel-n64-screensize":r[2],"parallel-n64-gfxplugin":"auto","parallel-n64-cpucore":N64.cpu,"parallel-n64-rsp-plugin":N64.rsp};
+    return {"mupen64plus-cpucore":N64.cpu,"mupen64plus-rsp-plugin":N64.rsp,"mupen64plus-43screensize":r[0],"mupen64plus-169screensize":r[1],"mupen64plus-EnableFBEmulation":N64.fb?"True":"False","mupen64plus-BilinearMode":N64.bilinear?"standard":"3point"}; }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
@@ -592,7 +599,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
 
   function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
-  (function initN64(){ const c=document.querySelector("#n64core"); if(c){ c.value=N64.core; c.onchange=function(e){ N64.core=e.target.value; saveN64(); toast("Relance le jeu pour appliquer le cœur"); }; } const p=document.querySelector("#n64perf"); if(p){ p.value=N64.perf; p.onchange=function(e){ N64.perf=e.target.value; saveN64(); toast("Relance le jeu pour appliquer"); }; } })();
+  (function initN64(){
+    function bindSel(id,key){ const el=document.querySelector(id); if(!el)return; el.value=N64[key]; el.onchange=function(e){ N64[key]=e.target.value; saveN64(); toast("Relance le jeu pour appliquer"); }; }
+    ["#n64core:core","#n64res:res","#n64cpu:cpu","#n64rsp:rsp"].forEach(function(s){ const p=s.split(":"); bindSel(p[0],p[1]); });
+    function bindSw(id,key){ const el=document.querySelector(id); if(!el)return; el.classList.toggle("on",!!N64[key]); el.onclick=function(){ N64[key]=!N64[key]; el.classList.toggle("on",N64[key]); saveN64(); toast("Relance le jeu pour appliquer"); }; }
+    bindSw("#n64fb","fb"); bindSw("#n64bil","bilinear");
+  })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
     $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const s=$("#vFskip"); if(s){ s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
