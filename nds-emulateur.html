@@ -174,6 +174,9 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    <div class="row"><div class="lab">Cœur DS<small>DeSmuME est souvent plus fluide (relance le jeu)</small></div><select id="dscore" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="melonds">melonDS (défaut)</option><option value="desmume2015">DeSmuME 2015</option></select></div>
+    <div class="row"><div class="lab">Rendu 3D threadé<small>melonDS — améliore la fluidité 3D</small></div><div class="switch" id="dsthreaded"><b></b></div></div>
+    <div class="row"><div class="lab">Disposition des écrans<small>melonDS</small></div><select id="dslayout" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="Top/Bottom">Haut / Bas</option><option value="Top Only">Haut seul</option><option value="Bottom Only">Bas seul (tactile)</option><option value="Hybrid Top">Hybride</option></select></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -326,6 +329,9 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
+  const DS=(function(){ const d={core:"melonds",threaded:true,layout:"Top/Bottom"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_ds")||"{}"); }catch(e){} return Object.assign(d,s); })();
+  function saveDS(){ try{ localStorage.setItem("nico_ds", JSON.stringify(DS)); }catch(e){} }
+  function dsOptions(){ if(DS.core!=="melonds") return {}; return {"melonds_threaded_rendering":DS.threaded?"enabled":"disabled","melonds_screen_layout":DS.layout}; }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
@@ -508,14 +514,16 @@ input,textarea{-webkit-user-select:text;user-select:text}
   async function launch(name,ab){
     if(launched) return; launched=true;
     const url=URL.createObjectURL(new Blob([ab]));
-    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
+    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core; if(SYS.core==="nds") window.EJS_core=DS.core;
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
     if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds","n64"].indexOf(SYS.core)>=0) window.EJS_threads=true;
+    if(SYS.core==="nds" && DS.core!=="melonds") window.EJS_threads=false;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
     let _opts={};
     if(SYS.core==="gb") _opts.gambatte_gb_colorization = settings.video.color?"GBC":"disabled";
     if(SYS.core==="psx") Object.assign(_opts,{"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":"disabled","pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"});
     Object.assign(_opts, fskipOptions(SYS.core, settings.video.frameskip||0));
+    if(SYS.core==="nds") Object.assign(_opts, dsOptions());
     if(Object.keys(_opts).length) window.EJS_defaultOptions=_opts;
     if(NETPLAY){ window.EJS_netplay=true; window.EJS_netplayServer=NETPLAY; }
     if(SYS.bios){ let biosUrl=null;
@@ -586,6 +594,11 @@ input,textarea{-webkit-user-select:text;user-select:text}
 
   function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
+  (function initDS(){
+    const c=document.querySelector("#dscore"); if(c){ c.value=DS.core; c.onchange=function(e){ DS.core=e.target.value; saveDS(); toast("Relance le jeu pour appliquer"); }; }
+    const l=document.querySelector("#dslayout"); if(l){ l.value=DS.layout; l.onchange=function(e){ DS.layout=e.target.value; saveDS(); toast("Relance le jeu pour appliquer"); }; }
+    const t=document.querySelector("#dsthreaded"); if(t){ t.classList.toggle("on",!!DS.threaded); t.onclick=function(){ DS.threaded=!DS.threaded; t.classList.toggle("on",DS.threaded); saveDS(); toast("Relance le jeu pour appliquer"); }; }
+  })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
     $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const s=$("#vFskip"); if(s){ s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
