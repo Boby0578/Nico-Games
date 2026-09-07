@@ -174,12 +174,13 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-    <div class="row"><div class="lab">Cœur N64<small>essaie les deux (relance le jeu)</small></div><select id="n64core" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="mupen64plus_next">Mupen64Plus (recommandé)</option><option value="parallel_n64">Parallel N64 (expérimental)</option></select></div>
-    <div class="row"><div class="lab">Résolution<small>native = plus fluide</small></div><select id="n64res" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="native">Native (320×240)</option><option value="x2">×2 (640×480)</option><option value="x3">×3 (960×720)</option></select></div>
-    <div class="row"><div class="lab">Processeur (CPU)<small>Recompilateur = le plus rapide (repli auto si indisponible)</small></div><select id="n64cpu" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="dynamic_recompiler">Recompilateur</option><option value="cached_interpreter">Interpréteur (cache)</option><option value="pure_interpreter">Interpréteur pur</option></select></div>
-    <div class="row"><div class="lab">RSP<small>HLE = rapide · LLE = précis</small></div><select id="n64rsp" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="hle">HLE (rapide)</option><option value="cxd4">LLE (précis)</option></select></div>
-    <div class="row"><div class="lab">Émulation framebuffer<small>désactive pour gagner en vitesse (peut casser certains effets)</small></div><div class="switch" id="n64fb"><b></b></div></div>
-    <div class="row"><div class="lab">Filtrage bilinéaire<small>lisse les textures</small></div><div class="switch" id="n64bil"><b></b></div></div>
+    <div class="row"><div class="lab">Cœur N64<small>Mupen = le plus performant (relance le jeu)</small></div><select id="n64core" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="mupen64plus_next">Mupen64Plus (recommandé)</option><option value="parallel_n64">Parallel N64 (expérimental)</option></select></div>
+    <div class="row"><div class="lab">Résolution<small>Auto = réglage optimal du cœur</small></div><select id="n64res" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto (recommandé)</option><option value="native">Native (320×240)</option><option value="x2">×2 (640×480)</option><option value="x3">×3 (960×720)</option></select></div>
+    <div class="row"><div class="lab">Processeur (CPU)<small>laisse sur Auto sauf test — forcer peut ralentir</small></div><select id="n64cpu" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto (recommandé)</option><option value="cached_interpreter">Interpréteur (cache)</option><option value="dynamic_recompiler">Recompilateur</option><option value="pure_interpreter">Interpréteur pur</option></select></div>
+    <div class="row"><div class="lab">RSP<small>Auto sauf test</small></div><select id="n64rsp" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto (recommandé)</option><option value="hle">HLE (rapide)</option><option value="cxd4">LLE (précis)</option></select></div>
+    <div class="row"><div class="lab">Émulation framebuffer</div><select id="n64fb" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto</option><option value="on">Activée</option><option value="off">Désactivée (+ rapide)</option></select></div>
+    <div class="row"><div class="lab">Filtrage bilinéaire</div><select id="n64bil" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto</option><option value="on">Activé</option><option value="off">Désactivé</option></select></div>
+    <div class="row"><div class="lab">Réinitialiser N64<small>revient à tout Auto</small></div><button id="n64reset" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 12px;font:inherit;font-weight:700">Auto</button></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -332,12 +333,22 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
-  const N64=(function(){ const d={core:"mupen64plus_next",res:"native",cpu:"dynamic_recompiler",rsp:"hle",fb:true,bilinear:true}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_n64")||"{}"); }catch(e){} const o=Object.assign(d,s); if(o.core==="parallel-n64"||o.core==="parallel") o.core="parallel_n64"; if(o.perf){ o.res=(o.perf==="perf"?"native":"x2"); delete o.perf; } return o; })();
+  const N64=(function(){ const d={core:"mupen64plus_next",res:"auto",cpu:"auto",rsp:"auto",fb:"auto",bilinear:"auto"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_n64")||"{}"); }catch(e){}
+    const o=Object.assign(d,s);
+    if(o.core==="parallel-n64"||o.core==="parallel") o.core="parallel_n64";
+    delete o.perf;
+    if(!o._v2){ o.res="auto"; o.cpu="auto"; o.rsp="auto"; o.fb="auto"; o.bilinear="auto"; o._v2=true; }  /* réinitialise les anciens réglages forcés qui cassaient les perfs */
+    return o; })();
   function saveN64(){ try{ localStorage.setItem("nico_n64", JSON.stringify(N64)); }catch(e){} }
-  function n64Res(){ if(N64.res==="x3") return ["960x720","1440x810","960x720"]; if(N64.res==="x2") return ["640x480","960x540","640x480"]; return ["320x240","640x360","320x240"]; }
-  function n64Options(){ const r=n64Res();
-    if(N64.core==="parallel_n64") return {"parallel-n64-screensize":r[2],"parallel-n64-gfxplugin":"auto","parallel-n64-cpucore":N64.cpu,"parallel-n64-rsp-plugin":N64.rsp};
-    return {"mupen64plus-cpucore":N64.cpu,"mupen64plus-rsp-plugin":N64.rsp,"mupen64plus-43screensize":r[0],"mupen64plus-169screensize":r[1],"mupen64plus-EnableFBEmulation":N64.fb?"True":"False","mupen64plus-BilinearMode":N64.bilinear?"standard":"3point"}; }
+  function n64Res(){ if(N64.res==="x3") return ["960x720","1440x810","960x720"]; if(N64.res==="x2") return ["640x480","960x540","640x480"]; if(N64.res==="native") return ["320x240","640x360","320x240"]; return null; }
+  function n64Options(){ const o={}; const r=n64Res();
+    if(N64.core==="parallel_n64"){ if(r) o["parallel-n64-screensize"]=r[2]; if(N64.cpu!=="auto") o["parallel-n64-cpucore"]=N64.cpu; if(N64.rsp!=="auto") o["parallel-n64-rsp-plugin"]=N64.rsp; return o; }
+    if(r){ o["mupen64plus-43screensize"]=r[0]; o["mupen64plus-169screensize"]=r[1]; }
+    if(N64.cpu!=="auto") o["mupen64plus-cpucore"]=N64.cpu;
+    if(N64.rsp!=="auto") o["mupen64plus-rsp-plugin"]=N64.rsp;
+    if(N64.fb!=="auto") o["mupen64plus-EnableFBEmulation"]=(N64.fb==="on"?"True":"False");
+    if(N64.bilinear!=="auto") o["mupen64plus-BilinearMode"]=(N64.bilinear==="on"?"standard":"3point");
+    return o; }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
@@ -602,9 +613,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   (function initN64(){
     function bindSel(id,key){ const el=document.querySelector(id); if(!el)return; el.value=N64[key]; el.onchange=function(e){ N64[key]=e.target.value; saveN64(); toast("Relance le jeu pour appliquer"); }; }
-    ["#n64core:core","#n64res:res","#n64cpu:cpu","#n64rsp:rsp"].forEach(function(s){ const p=s.split(":"); bindSel(p[0],p[1]); });
-    function bindSw(id,key){ const el=document.querySelector(id); if(!el)return; el.classList.toggle("on",!!N64[key]); el.onclick=function(){ N64[key]=!N64[key]; el.classList.toggle("on",N64[key]); saveN64(); toast("Relance le jeu pour appliquer"); }; }
-    bindSw("#n64fb","fb"); bindSw("#n64bil","bilinear");
+    [["#n64core","core"],["#n64res","res"],["#n64cpu","cpu"],["#n64rsp","rsp"],["#n64fb","fb"],["#n64bil","bilinear"]].forEach(function(p){ bindSel(p[0],p[1]); });
+    const rb=document.querySelector("#n64reset"); if(rb) rb.onclick=function(){ N64.res="auto";N64.cpu="auto";N64.rsp="auto";N64.fb="auto";N64.bilinear="auto"; saveN64(); ["#n64res","#n64cpu","#n64rsp","#n64fb","#n64bil"].forEach(function(id){ const e=document.querySelector(id); if(e) e.value="auto"; }); toast("N64 remis en Auto — relance le jeu"); };
   })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};

@@ -175,8 +175,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     <div class="row"><div class="lab">Cœur DS<small>DeSmuME est souvent plus fluide (relance le jeu)</small></div><select id="dscore" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="melonds">melonDS (défaut)</option><option value="desmume2015">DeSmuME 2015</option></select></div>
-    <div class="row"><div class="lab">Rendu 3D threadé<small>melonDS — améliore la fluidité 3D</small></div><div class="switch" id="dsthreaded"><b></b></div></div>
-    <div class="row"><div class="lab">Disposition des écrans<small>melonDS</small></div><select id="dslayout" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="Top/Bottom">Haut / Bas</option><option value="Top Only">Haut seul</option><option value="Bottom Only">Bas seul (tactile)</option><option value="Hybrid Top">Hybride</option></select></div>
+    <div class="row"><div class="lab">Rendu 3D threadé<small>melonDS — Auto = réglage par défaut du cœur</small></div><select id="dsthreaded" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto</option><option value="on">Activé</option><option value="off">Désactivé</option></select></div>
+    <div class="row"><div class="lab">Disposition des écrans<small>melonDS</small></div><select id="dslayout" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="auto">Auto</option><option value="Top/Bottom">Haut / Bas</option><option value="Top Only">Haut seul</option><option value="Bottom Only">Bas seul (tactile)</option><option value="Hybrid Top">Hybride</option></select></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -329,9 +329,12 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
-  const DS=(function(){ const d={core:"melonds",threaded:true,layout:"Top/Bottom"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_ds")||"{}"); }catch(e){} return Object.assign(d,s); })();
+  const DS=(function(){ const d={core:"melonds",threaded:"auto",layout:"auto"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_ds")||"{}"); }catch(e){}
+    const o=Object.assign(d,s);
+    if(!o._v2){ o.threaded="auto"; o.layout="auto"; o._v2=true; }
+    return o; })();
   function saveDS(){ try{ localStorage.setItem("nico_ds", JSON.stringify(DS)); }catch(e){} }
-  function dsOptions(){ if(DS.core!=="melonds") return {}; return {"melonds_threaded_rendering":DS.threaded?"enabled":"disabled","melonds_screen_layout":DS.layout}; }
+  function dsOptions(){ if(DS.core!=="melonds") return {}; const o={}; if(DS.threaded!=="auto") o["melonds_threaded_rendering"]=(DS.threaded==="on"?"enabled":"disabled"); if(DS.layout!=="auto") o["melonds_screen_layout"]=DS.layout; return o; }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
@@ -595,9 +598,8 @@ input,textarea{-webkit-user-select:text;user-select:text}
   function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   (function initDS(){
-    const c=document.querySelector("#dscore"); if(c){ c.value=DS.core; c.onchange=function(e){ DS.core=e.target.value; saveDS(); toast("Relance le jeu pour appliquer"); }; }
-    const l=document.querySelector("#dslayout"); if(l){ l.value=DS.layout; l.onchange=function(e){ DS.layout=e.target.value; saveDS(); toast("Relance le jeu pour appliquer"); }; }
-    const t=document.querySelector("#dsthreaded"); if(t){ t.classList.toggle("on",!!DS.threaded); t.onclick=function(){ DS.threaded=!DS.threaded; t.classList.toggle("on",DS.threaded); saveDS(); toast("Relance le jeu pour appliquer"); }; }
+    function bindSel(id,key){ const el=document.querySelector(id); if(!el)return; el.value=DS[key]; el.onchange=function(e){ DS[key]=e.target.value; saveDS(); toast("Relance le jeu pour appliquer"); }; }
+    [["#dscore","core"],["#dsthreaded","threaded"],["#dslayout","layout"]].forEach(function(p){ bindSel(p[0],p[1]); });
   })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
