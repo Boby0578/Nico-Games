@@ -175,6 +175,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
     <div class="row"><div class="lab">Cœur arcade<small>FBNeo (BIOS auto) ou MAME 2003 — relance le jeu</small></div><select id="arccore" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="fbneo">FBNeo (recommandé · BIOS auto)</option><option value="mame2003">MAME 2003</option></select></div>
+    <div class="row"><div class="lab">BIOS système<small>Neo Geo par défaut ; à changer seulement pour un jeu d'un autre système FBNeo</small></div><select id="arcbios" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="neogeo.zip">Neo Geo (défaut)</option><option value="pgm.zip">PGM</option><option value="skns.zip">Kaneko SKNS</option><option value="konamigx.zip">Konami GX</option><option value="decocass.zip">DECO Cassette</option><option value="isgsm.zip">ISG Selection</option><option value="cchip.zip">C-Chip</option><option value="nmk004.zip">NMK004</option><option value="ym2608.zip">YM2608</option><option value="midssio.zip">Midway SSIO</option><option value="none">Aucun</option></select></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -327,7 +328,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
-  const ARC=(function(){ const d={core:"fbneo"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_arcade")||"{}"); }catch(e){} return Object.assign(d,s); })();
+  const ARC=(function(){ const d={core:"fbneo",bios:"neogeo.zip"}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_arcade")||"{}"); }catch(e){} return Object.assign(d,s); })();
   function saveARC(){ try{ localStorage.setItem("nico_arcade", JSON.stringify(ARC)); }catch(e){} }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
@@ -511,7 +512,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
   async function launch(name,ab){
     if(launched) return; launched=true;
     const url=URL.createObjectURL(new Blob([ab]));
-    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core; if(SYS.core==="arcade"){ window.EJS_core=(ARC.core==="fbneo"?"arcade":ARC.core); if(ARC.core==="fbneo") window.EJS_biosUrl="neogeo.zip"; }
+    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core; if(SYS.core==="arcade"){ window.EJS_core=(ARC.core==="fbneo"?"arcade":ARC.core); if(ARC.core==="fbneo" && ARC.bios && ARC.bios!=="none") window.EJS_biosUrl=ARC.bios; }
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
     if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds","n64"].indexOf(SYS.core)>=0) window.EJS_threads=true;
     if(SYS.core==="arcade") window.EJS_threads=false;
@@ -590,7 +591,10 @@ input,textarea{-webkit-user-select:text;user-select:text}
 
   function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
-  (function initARC(){ const c=document.querySelector("#arccore"); if(c){ c.value=ARC.core; c.onchange=function(e){ ARC.core=e.target.value; saveARC(); toast("Relance le jeu — le BIOS intégré ne s'applique qu'à FBNeo"); }; } })();
+  (function initARC(){
+    function b(id,key,msg){ const el=document.querySelector(id); if(!el)return; el.value=ARC[key]; el.onchange=function(e){ ARC[key]=e.target.value; saveARC(); toast(msg); }; }
+    b("#arccore","core","Relance le jeu"); b("#arcbios","bios","BIOS changé — relance le jeu");
+  })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
     $("#vSat").value=settings.video.sat; $("#vSat").oninput=e=>{settings.video.sat=+e.target.value;save();applyVideo();}; sw($("#vFill"),settings.video.fill,v=>{settings.video.fill=v;save();applyVideo();}); $("#vFull").onclick=toggleFull; { const s=$("#vFskip"); if(s){ s.value=String(settings.video.frameskip||0); s.onchange=function(e){ settings.video.frameskip=+e.target.value; save(); applyFskipLive(); toast("Images sautees : "+e.target.value+(running?" - relance le jeu si besoin":"")); }; } } if(SYS.core==="gb"){ sw($("#vColor"),settings.video.color,v=>{settings.video.color=v;save();applyColorLive();toast("Si le jeu tourne déjà, relance-le pour la couleur");}); } else { const rc=$("#rowColor"); if(rc) rc.style.display="none"; } }
