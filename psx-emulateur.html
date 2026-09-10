@@ -514,7 +514,7 @@ input,textarea{-webkit-user-select:text;user-select:text}
   async function launch(name,ab){
     if(launched) return; launched=true;
     const url=URL.createObjectURL(new Blob([ab]));
-    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core;
+    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core; if(SYS.core==="psx"){ try{ const _r=await fetch("scph1001.bin",{method:"HEAD"}); if(_r&&_r.ok) window.EJS_biosUrl="scph1001.bin"; }catch(e){} }
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
     if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds","n64","psx"].indexOf(SYS.core)>=0) window.EJS_threads=true;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
