@@ -174,9 +174,15 @@ input,textarea{-webkit-user-select:text;user-select:text}
     <div class="row"><div class="lab">Saturation</div><input type="range" id="vSat" min="0" max="200" value="100"></div>
     <div class="row"><div class="lab">Full<small>remplit tout l'écran, même sous l'encoche (auto selon l'appareil)</small></div><div class="switch" id="vFill"><b></b></div></div>
     <div class="row" id="rowFskip"><div class="lab">Images sautées<small>1 = une image en moins ; aide contre les ralentissements et grésillements</small></div><select id="vFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0 (aucune)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
-    <div class="row"><div class="lab">Interpolation audio (SPU)<small>Simple = plus fluide ; Gaussienne/Cubique = son plus riche mais plus lourd</small></div><select id="psxInterp" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="simple">Simple</option><option value="gaussian">Gaussienne</option><option value="cubic">Cubique</option><option value="off">Désactivée</option></select></div>
-    <div class="row"><div class="lab">Réverbération<small>son plus riche, mais un peu plus lourd (désactive si ça grésille)</small></div><div class="switch" id="psxReverb"><b></b></div></div>
-    <div class="row"><div class="lab">Images sautées PS1<small>donne de l'air au son (recommandé : 1)</small></div><select id="psxFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    <div class="row"><div class="lab">Cœur PS1<small>PCSX = fluide ; Mednafen = image de meilleure qualité mais plus lourd (relance)</small></div><select id="psxCore" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="psx">PCSX ReARMed (fluide)</option><option value="mednafen_psx_hw">Mednafen (qualité)</option></select></div>
+    <div class="row"><div class="lab">Multi-cœurs (threads)<small>utilise plusieurs cœurs du processeur — plus fluide (relance)</small></div><div class="switch" id="psxThreads"><b></b></div></div>
+    <div class="row"><div class="lab">Recompilateur (dynarec)<small>accélère l'émulation ; laisse activé (relance)</small></div><div class="switch" id="psxDrc"><b></b></div></div>
+    <div class="row"><div class="lab">Résolution interne (Mednafen)<small>native = fluide ; 2x/4x = plus net mais plus lourd</small></div><select id="psxUpscale" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="native">Native</option><option value="2x">2x</option><option value="4x">4x</option></select></div>
+    <div class="row"><div class="lab">Interpolation audio (SPU)<small>Simple = fluide ; Gaussienne/Cubique = son plus riche</small></div><select id="psxInterp" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="simple">Simple</option><option value="gaussian">Gaussienne</option><option value="cubic">Cubique</option><option value="off">Désactivée</option></select></div>
+    <div class="row"><div class="lab">Son sur thread dédié<small>traite l'audio à part — le meilleur remède au grésillement</small></div><div class="switch" id="psxSpu"><b></b></div></div>
+    <div class="row"><div class="lab">Réverbération<small>son plus riche (désactive si ça grésille)</small></div><div class="switch" id="psxReverb"><b></b></div></div>
+    <div class="row"><div class="lab">Images sautées<small>donne de l'air au son (recommandé : 1)</small></div><select id="psxFskip" style="background:#0a1a0a;color:#39ff14;border:1px solid #1f5a1f;border-radius:8px;padding:8px 10px;font:inherit"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+    <div class="row"><div class="lab">Tramage / dithering (Mednafen)<small>lisse les dégradés de couleur</small></div><div class="switch" id="psxDither"><b></b></div></div>
     <div class="row" id="rowColor"><div class="lab">Couleur (Game Boy Color)<small>colorise les jeux Game Boy — effet au (re)lancement</small></div><div class="switch" id="vColor"><b></b></div></div>
     <div class="row"><div class="lab">Plein écran</div><button class="btn" id="vFull">Activer</button></div>
   </div></div>
@@ -332,6 +338,16 @@ input,textarea{-webkit-user-select:text;user-select:text}
   if(!settings._psxreset){ settings.psx={frameskip:2,interp:"simple"}; settings._psxreset=true; try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){} }
   function load(k,def){try{const v=JSON.parse(localStorage.getItem(k));return v?Object.assign(JSON.parse(JSON.stringify(def)),v):def;}catch(e){return def;}}
   function save(){try{localStorage.setItem("emu_"+SYS.core,JSON.stringify(settings));}catch(e){}}
+  const PSX=(function(){ const d={core:"psx",threads:true,drc:true,sputhread:true,interp:"simple",reverb:false,frameskip:1,upscale:"native",dither:true}; let s={}; try{ s=JSON.parse(localStorage.getItem("nico_psx")||"{}"); }catch(e){} return Object.assign(d,s); })();
+  function savePSX(){ try{ localStorage.setItem("nico_psx", JSON.stringify(PSX)); }catch(e){} }
+  function psxOptions(){ const o={"pcsx_rearmed_sound_volume":"1.00"};
+    if(PSX.core==="mednafen_psx_hw"){ if(PSX.upscale!=="native") o["beetle_psx_hw_internal_resolution"]=PSX.upscale; o["beetle_psx_hw_dither_mode"]=(PSX.dither?"1x":"disabled"); return o; }
+    o["pcsx_rearmed_drc"]=PSX.drc?"enabled":"disabled";
+    o["pcsx_rearmed_spu_interpolation"]=PSX.interp;
+    o["pcsx_rearmed_spu_reverb"]=PSX.reverb?"enabled":"disabled";
+    o["pcsx_rearmed_spu_thread"]=PSX.sputhread?"enabled":"disabled";
+    o["pcsx_rearmed_frameskip"]=String(PSX.frameskip);
+    return o; }
 
   /* ==== Égaliseur inséré dans le graphe audio d'EmulatorJS ==== */
   const EQ_FREQS=[31,62,125,250,500,1000,2000,4000,8000,16000];
@@ -514,13 +530,14 @@ input,textarea{-webkit-user-select:text;user-select:text}
   async function launch(name,ab){
     if(launched) return; launched=true;
     const url=URL.createObjectURL(new Blob([ab]));
-    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=SYS.core; if(SYS.core==="psx"){ try{ const _r=await fetch("scph1001.bin",{method:"HEAD"}); if(_r&&_r.ok) window.EJS_biosUrl="scph1001.bin"; }catch(e){} }
+    window.EJS_player="#game"; window.EJS_pathtodata="https://cdn.emulatorjs.org/stable/data/"; window.EJS_core=(SYS.core==="psx"?PSX.core:SYS.core); if(SYS.core==="psx"){ try{ const _r=await fetch("scph1001.bin",{method:"HEAD"}); if(_r&&_r.ok) window.EJS_biosUrl="scph1001.bin"; }catch(e){} }
     window.EJS_color="#39ff14"; window.EJS_backgroundColor="#050805"; window.EJS_startOnLoaded=true;
     if(self.crossOriginIsolated && ["snes","gba","segaMD","pce","arcade","nds","n64","psx"].indexOf(SYS.core)>=0) window.EJS_threads=true;
+    if(SYS.core==="psx" && !PSX.threads) window.EJS_threads=false;
     window.EJS_volume=settings.sound.eqon?1:(settings.sound.vol/100);
     let _opts={};
     if(SYS.core==="gb") _opts.gambatte_gb_colorization = settings.video.color?"GBC":"disabled";
-    if(SYS.core==="psx") Object.assign(_opts,{"pcsx_rearmed_drc":"enabled","pcsx_rearmed_spu_interpolation":settings.psx.interp,"pcsx_rearmed_spu_reverb":(settings.psx.reverb?"enabled":"disabled"),"pcsx_rearmed_frameskip":String(settings.psx.frameskip),"pcsx_rearmed_sound_volume":"1.00"});
+    if(SYS.core==="psx") Object.assign(_opts, psxOptions());
     Object.assign(_opts, fskipOptions(SYS.core, settings.video.frameskip||0));
     if(Object.keys(_opts).length) window.EJS_defaultOptions=_opts;
     if(NETPLAY){ window.EJS_netplay=true; window.EJS_netplayServer=NETPLAY; }
@@ -593,9 +610,10 @@ input,textarea{-webkit-user-select:text;user-select:text}
   function sw(el,on,cb){ el.classList.toggle("on",on); el.onclick=()=>{ const v=!el.classList.contains("on"); el.classList.toggle("on",v); cb(v); }; }
   function seg(container,val,cb){ $$("button",container).forEach(b=>{ b.classList.toggle("on",b.dataset.v===val); b.onclick=()=>{ $$("button",container).forEach(x=>x.classList.remove("on")); b.classList.add("on"); cb(b.dataset.v); }; }); }
   (function initPSX(){
-    const i=document.querySelector("#psxInterp"); if(i){ i.value=settings.psx.interp; i.onchange=function(e){ settings.psx.interp=e.target.value; save(); toast("Relance le jeu pour appliquer"); }; }
-    const fk=document.querySelector("#psxFskip"); if(fk){ fk.value=String(settings.psx.frameskip); fk.onchange=function(e){ settings.psx.frameskip=+e.target.value; save(); toast("Relance le jeu pour appliquer"); }; }
-    const rv=document.querySelector("#psxReverb"); if(rv){ rv.classList.toggle("on",!!settings.psx.reverb); rv.onclick=function(){ settings.psx.reverb=!settings.psx.reverb; rv.classList.toggle("on",settings.psx.reverb); save(); toast("Relance le jeu pour appliquer"); }; }
+    function bSel(id,key){ const el=document.querySelector(id); if(!el)return; el.value=String(PSX[key]); el.onchange=function(e){ let v=e.target.value; if(key==="frameskip") v=+v; PSX[key]=v; savePSX(); toast("Relance le jeu pour appliquer"); }; }
+    function bSw(id,key){ const el=document.querySelector(id); if(!el)return; el.classList.toggle("on",!!PSX[key]); el.onclick=function(){ PSX[key]=!PSX[key]; el.classList.toggle("on",PSX[key]); savePSX(); toast("Relance le jeu pour appliquer"); }; }
+    bSel("#psxCore","core"); bSel("#psxUpscale","upscale"); bSel("#psxInterp","interp"); bSel("#psxFskip","frameskip");
+    bSw("#psxThreads","threads"); bSw("#psxDrc","drc"); bSw("#psxSpu","sputhread"); bSw("#psxReverb","reverb"); bSw("#psxDither","dither");
   })();
   function syncVideo(){ sw($("#vSmooth"),settings.video.smooth,v=>{settings.video.smooth=v;save();applyVideo();}); sw($("#vCrt"),settings.video.crt,v=>{settings.video.crt=v;save();applyVideo();});
     $("#vBright").value=settings.video.bright; $("#vBright").oninput=e=>{settings.video.bright=+e.target.value;save();applyVideo();};
